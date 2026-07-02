@@ -1549,7 +1549,7 @@ textarea{resize:vertical;min-height:64px;}
 // ════════════════════════════════════
 // CONFIG — paste your Apps Script URL here OR use the UI button
 // ════════════════════════════════════
-let SCRIPT_URL = ''; // set by IIFE below after welcome screen check
+// SCRIPT_URL defined in DB layer below
 
 function cfgOpen(){
   const p=document.getElementById('cfg-panel');
@@ -1575,18 +1575,10 @@ function welcomeSave(){
   location.reload();
 }
 
-// Hide welcome screen only if URL already saved — runs as soon as script loads
+// Supabase credentials hardcoded — always skip welcome screen
 (function(){
-  const saved = localStorage.getItem('fth_script_url');
-  if(saved && saved.startsWith('http')){
-    SCRIPT_URL = saved;
-    const ws = document.getElementById('welcome-screen');
-    if(ws) ws.style.display = 'none';
-  } else {
-    // clear any bad value
-    localStorage.removeItem('fth_script_url');
-    SCRIPT_URL = '';
-  }
+  const ws = document.getElementById('welcome-screen');
+  if(ws) ws.style.display = 'none';
 })();
 async function cfgSave(){
   const url=document.getElementById('cfg-url-input').value.trim();
@@ -1643,130 +1635,141 @@ function setApiStatus(ok,msg){
 const LOCAL = { customers:[], shops:[], lots:[], ships:[], consolidations:[], bookings:[], config:{lot_ctr:1,co_ctr:1,cust_ctr:1,shop_ctr:1,bk_ctr:1,seeded:false} };
 
 // ════════════════════════════════════
-// ASYNC DB LAYER
+// SUPABASE DB LAYER
 // ════════════════════════════════════
+const SUPA_URL = 'https://sxvdarfcsyjcsmytbkdb.supabase.co';
+const SUPA_KEY = 'sb_publishable_TtcfFJcWXqV-YkRISei8bg_JWibU1ea';
+const SCRIPT_URL = ''; // GAS disabled — using Supabase
+
 const DB = {
+  // ── HTTP helpers ──
+  _h(){return{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};},
+  _get(table,q='select=*'){return fetch(`${SUPA_URL}/rest/v1/${table}?${q}`,{headers:this._h()}).then(r=>r.json()).catch(()=>[]);},
+  _ins(table,data){fetch(`${SUPA_URL}/rest/v1/${table}`,{method:'POST',headers:{...this._h(),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(data)}).catch(e=>console.warn('ins',table,e));},
+  _upd(table,id,data){fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{...this._h(),'Prefer':'return=minimal'},body:JSON.stringify(data)}).catch(e=>console.warn('upd',table,e));},
+  _del(table,id){fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:this._h()}).catch(e=>console.warn('del',table,e));},
+  _cfg(key,val){fetch(`${SUPA_URL}/rest/v1/config`,{method:'POST',headers:{...this._h(),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key,value:String(val)})}).catch(e=>console.warn('cfg',e));},
+
   // ── reads (sync from cache) ──
-  getLots:      () => LOCAL.lots,
-  getShips:     () => LOCAL.ships,
-  getCustomers: () => LOCAL.customers,
-  peekLotNum:   () => LOCAL.config.lot_ctr,
-  peekCoNum:    () => LOCAL.config.co_ctr,
+  getLots:          ()=>LOCAL.lots,
+  getShips:         ()=>LOCAL.ships,
+  getCustomers:     ()=>LOCAL.customers,
+  getShops:         ()=>LOCAL.shops,
+  getConsolidations:()=>LOCAL.consolidations,
+  getBookings:      ()=>LOCAL.bookings,
+  getBookingsByConsol:(consolId)=>LOCAL.bookings.filter(b=>b.consolId===consolId),
+  getSchedules:     ()=>LOCAL.schedules||[],
+  peekLotNum:       ()=>LOCAL.config.lot_ctr,
+  peekCoNum:        ()=>LOCAL.config.co_ctr,
 
   // ── counters ──
-  nextLotNum(){const n=LOCAL.config.lot_ctr;LOCAL.config.lot_ctr++;this._post({action:'setConfig',key:'lot_ctr',value:LOCAL.config.lot_ctr});return n;},
-  nextCoNum() {const n=LOCAL.config.co_ctr; LOCAL.config.co_ctr++; this._post({action:'setConfig',key:'co_ctr', value:LOCAL.config.co_ctr});return n;},
-  nextCustNum(){const n=LOCAL.config.cust_ctr||1;LOCAL.config.cust_ctr=(n+1);this._post({action:'setConfig',key:'cust_ctr',value:LOCAL.config.cust_ctr});return n;},
-
-  getShops: () => LOCAL.shops,
+  nextLotNum() {const n=LOCAL.config.lot_ctr;  LOCAL.config.lot_ctr++;  this._cfg('lot_ctr',LOCAL.config.lot_ctr);  return n;},
+  nextCoNum()  {const n=LOCAL.config.co_ctr;   LOCAL.config.co_ctr++;   this._cfg('co_ctr', LOCAL.config.co_ctr);   return n;},
+  nextCustNum(){const n=LOCAL.config.cust_ctr||1;LOCAL.config.cust_ctr=(n+1);this._cfg('cust_ctr',LOCAL.config.cust_ctr);return n;},
+  nextShopNum(){const n=LOCAL.config.shop_ctr||1;LOCAL.config.shop_ctr=(n+1);this._cfg('shop_ctr',LOCAL.config.shop_ctr);return n;},
+  nextBkNum()  {const n=LOCAL.config.bk_ctr||1;LOCAL.config.bk_ctr=(n+1);this._cfg('bk_ctr',LOCAL.config.bk_ctr);const yr=new Date().getFullYear();return `BK-${yr}-${String(n).padStart(3,'0')}`;},
 
   // ── customer writes ──
-  addCustomer(c)    {const ac=augmentCust(c);LOCAL.customers.push(ac);this._post({action:'addCustomer',data:ac});},
-  updateCustomer(id,u){const i=LOCAL.customers.findIndex(c=>c.id===id);if(i>-1)LOCAL.customers[i]=augmentCust({...LOCAL.customers[i],...u});this._post({action:'updateCustomer',id,updates:u});},
-  deleteCustomer(id){LOCAL.customers=LOCAL.customers.filter(c=>c.id!==id);this._post({action:'deleteCustomer',id});},
+  addCustomer(c)      {const ac=augmentCust(c);LOCAL.customers.push(ac);this._ins('customers',ac);},
+  updateCustomer(id,u){const i=LOCAL.customers.findIndex(c=>c.id===id);if(i>-1)LOCAL.customers[i]=augmentCust({...LOCAL.customers[i],...u});this._upd('customers',id,u);},
+  deleteCustomer(id)  {LOCAL.customers=LOCAL.customers.filter(c=>c.id!==id);this._del('customers',id);},
 
   // ── shop writes ──
-  addShop(s)    {LOCAL.shops.push(s);this._post({action:'addShop',data:s});},
-  updateShop(id,u){const i=LOCAL.shops.findIndex(s=>s.id===id);if(i>-1)LOCAL.shops[i]={...LOCAL.shops[i],...u};this._post({action:'updateShop',id,updates:u});},
-  deleteShop(id){LOCAL.shops=LOCAL.shops.filter(s=>s.id!==id);this._post({action:'deleteShop',id});},
-  nextShopNum(){const n=LOCAL.config.shop_ctr||1;LOCAL.config.shop_ctr=(n+1);this._post({action:'setConfig',key:'shop_ctr',value:LOCAL.config.shop_ctr});return n;},
+  addShop(s)      {LOCAL.shops.push(s);this._ins('shops',s);},
+  updateShop(id,u){const i=LOCAL.shops.findIndex(s=>s.id===id);if(i>-1)LOCAL.shops[i]={...LOCAL.shops[i],...u};this._upd('shops',id,u);},
+  deleteShop(id)  {LOCAL.shops=LOCAL.shops.filter(s=>s.id!==id);this._del('shops',id);},
 
   // ── lot writes ──
-  addLot(lot)       {LOCAL.lots.unshift(lot);this._post({action:'addLot',data:lot});},
-  updateLot(id,upd) {const i=LOCAL.lots.findIndex(l=>l.id===id);if(i>-1)LOCAL.lots[i]={...LOCAL.lots[i],...upd};this._post({action:'updateLot',id,updates:upd});},
+  addLot(lot)    {LOCAL.lots.unshift(lot);this._ins('lots',lot);},
+  updateLot(id,u){const i=LOCAL.lots.findIndex(l=>l.id===id);if(i>-1)LOCAL.lots[i]={...LOCAL.lots[i],...u};this._upd('lots',id,u);},
 
   // ── shipment writes ──
-  addShip(s)        {LOCAL.ships.unshift(s);this._post({action:'addShip',data:s});},
-  updateShip(id,upd){const i=LOCAL.ships.findIndex(s=>s.id===id);if(i>-1)LOCAL.ships[i]={...LOCAL.ships[i],...upd};this._post({action:'updateShip',id,updates:upd});},
-  addEvent(id,evt)  {const i=LOCAL.ships.findIndex(s=>s.id===id);if(i>-1)LOCAL.ships[i].tracking.push(evt);this._post({action:'addEvent',id,event:evt});},
+  addShip(s)       {LOCAL.ships.unshift(s);this._ins('shipments',s);},
+  updateShip(id,u) {const i=LOCAL.ships.findIndex(s=>s.id===id);if(i>-1)LOCAL.ships[i]={...LOCAL.ships[i],...u};this._upd('shipments',id,u);},
+  addEvent(id,evt) {const i=LOCAL.ships.findIndex(s=>s.id===id);if(i>-1){LOCAL.ships[i].tracking.push(evt);this._upd('shipments',id,{tracking:JSON.stringify(LOCAL.ships[i].tracking)});}},
 
   // ── consolidation writes ──
-  getConsolidations:()=>LOCAL.consolidations,
-  addConsolidation(c){LOCAL.consolidations.unshift(c);this._post({action:'addConsolidation',data:c});},
-  updateConsolidation(id,upd){const i=LOCAL.consolidations.findIndex(c=>c.id===id);if(i>-1)LOCAL.consolidations[i]={...LOCAL.consolidations[i],...upd};this._post({action:'updateConsolidation',id,updates:upd});},
-  deleteConsolidation(id){
-    LOCAL.consolidations=LOCAL.consolidations.filter(c=>c.id!==id);
-    LOCAL.ships=LOCAL.ships.filter(s=>s.id!==id);
-    this._post({action:'deleteConsolidation',id});
-  },
+  addConsolidation(c)        {LOCAL.consolidations.unshift(c);this._ins('consolidations',c);},
+  updateConsolidation(id,upd){const i=LOCAL.consolidations.findIndex(c=>c.id===id);if(i>-1)LOCAL.consolidations[i]={...LOCAL.consolidations[i],...upd};this._upd('consolidations',id,upd);},
+  deleteConsolidation(id)    {LOCAL.consolidations=LOCAL.consolidations.filter(c=>c.id!==id);LOCAL.ships=LOCAL.ships.filter(s=>s.id!==id);this._del('consolidations',id);this._del('shipments',id);},
 
-  // ── booking methods ──
-  getBookings:()=>LOCAL.bookings,
-  getBookingsByConsol:(consolId)=>LOCAL.bookings.filter(b=>b.consolId===consolId),
-  getSchedules:()=>LOCAL.schedules||[],
-  addBooking(b)      {LOCAL.bookings.unshift(b);this._post({action:'addBooking',data:b});},
-  updateBooking(id,upd){const i=LOCAL.bookings.findIndex(b=>b.id===id);if(i>-1)LOCAL.bookings[i]={...LOCAL.bookings[i],...upd};this._post({action:'updateBooking',id,updates:upd});},
-  nextBkNum(){
-    const n=LOCAL.config.bk_ctr||1;
-    LOCAL.config.bk_ctr=(n+1);
-    this._post({action:'setConfig',key:'bk_ctr',value:LOCAL.config.bk_ctr});
-    const yr=new Date().getFullYear();
-    return `BK-${yr}-${String(n).padStart(3,'0')}`;
-  },
+  // ── booking writes ──
+  addBooking(b)        {LOCAL.bookings.unshift(b);this._ins('bookings',b);},
+  updateBooking(id,upd){const i=LOCAL.bookings.findIndex(b=>b.id===id);if(i>-1)LOCAL.bookings[i]={...LOCAL.bookings[i],...upd};this._upd('bookings',id,upd);},
 
-  // ── fetch all data ──
+  // ── fetch all data from Supabase ──
   async loadAll(){
-    if(!SCRIPT_URL){setApiStatus(false,'ยังไม่เชื่อมต่อ');showLoading(false);return;}
-    showLoading(true,'กำลังโหลดข้อมูลจาก Google Sheets…');
+    showLoading(true,'กำลังโหลดข้อมูลจาก Supabase…');
     try{
-      const res=await fetch(SCRIPT_URL+'?type=all');
-      const data=await res.json();
-      if(data.error) throw new Error(data.error);
-      LOCAL.customers      = (data.customers || []).map(augmentCust);
-      LOCAL.shops          = data.shops          || [];
-      LOCAL.lots           = data.lots           || [];
-      LOCAL.ships          = data.ships          || [];
-      LOCAL.consolidations = data.consolidations || [];
-      LOCAL.bookings       = data.bookings       || [];
-      LOCAL.config         = data.config         || {lot_ctr:1,co_ctr:1,cust_ctr:1,shop_ctr:1,bk_ctr:1,seeded:false};
+      const [custs,shops,lots,ships,consols,bks,cfgRows]=await Promise.all([
+        this._get('customers','select=*&order=createdAt.asc'),
+        this._get('shops','select=*'),
+        this._get('lots','select=*&order=date.desc'),
+        this._get('shipments','select=*&order=createdAt.desc'),
+        this._get('consolidations','select=*&order=createdAt.desc'),
+        this._get('bookings','select=*&order=createdAt.desc'),
+        this._get('config','select=*'),
+      ]);
+      LOCAL.customers      = (custs||[]).map(augmentCust);
+      LOCAL.shops          = shops||[];
+      LOCAL.lots           = lots||[];
+      LOCAL.ships          = ships||[];
+      LOCAL.consolidations = consols||[];
+      LOCAL.bookings       = bks||[];
+      LOCAL.config         = {lot_ctr:1,co_ctr:1,cust_ctr:1,shop_ctr:1,bk_ctr:1,seeded:false};
+      (cfgRows||[]).forEach(r=>{
+        if(r.key==='lot_ctr')  LOCAL.config.lot_ctr =Number(r.value)||1;
+        if(r.key==='co_ctr')   LOCAL.config.co_ctr  =Number(r.value)||1;
+        if(r.key==='cust_ctr') LOCAL.config.cust_ctr=Number(r.value)||1;
+        if(r.key==='shop_ctr') LOCAL.config.shop_ctr=Number(r.value)||1;
+        if(r.key==='bk_ctr')   LOCAL.config.bk_ctr  =Number(r.value)||1;
+        if(r.key==='seeded')   LOCAL.config.seeded  =r.value==='true';
+      });
       if(!LOCAL.config.seeded) await this._seed();
-      setApiStatus(true,'เชื่อมต่อแล้ว');
+      setApiStatus(true,'เชื่อมต่อ Supabase แล้ว');
     }catch(e){
-      setApiStatus(false,'เชื่อมต่อไม่ได้');
-      showToast('ไม่สามารถเชื่อมต่อ Sheets: '+e.message,true);
+      setApiStatus(false,'เชื่อมต่อไม่ได้: '+e.message);
+      showToast('ไม่สามารถเชื่อมต่อ Supabase: '+e.message,true);
     }
     showLoading(false);
   },
 
-  _post(body){
-    if(!SCRIPT_URL) return;
-    fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(body)}).catch(e=>console.warn('POST failed',e));
-  },
-
   async _seed(){
     showLoading(true,'กำลังสร้างข้อมูลตัวอย่าง…');
-    const SEED_CUSTS=[
-      {id:'CUS0001',name:'John Martin',   companyName:'',               passportNumber:'A12345678', passportImageUrl:'', email:'john.martin@email.com', countryCode:'+33', phone:'612345678',  imType:'WhatsApp', imAccount:'+33612345678',  country:'France 🇫🇷', address:'12 Rue de la Paix, Paris 75001, France',       responsibleSale:'Pluk', initials:'JM',color:'#1E40AF',note:'',  createdAt:1749993600000},
-      {id:'CUS0002',name:'Sara Kingston', companyName:'SK Imports Ltd.', passportNumber:'B98765432', passportImageUrl:'', email:'sara.k@email.com',       countryCode:'+44', phone:'7911123456', imType:'LINE',     imAccount:'sara_london',   country:'UK 🇬🇧',     address:'45 Oxford Street, London W1D 2DZ, UK',         responsibleSale:'Pluk', initials:'SK',color:'#5B21B6',note:'',  createdAt:1749993600000},
-      {id:'CUS0003',name:'Ahmed Al-Rashid',companyName:'Al-Rashid Trade',passportNumber:'C11223344', passportImageUrl:'', email:'ahmed@alrashid.ae',     countryCode:'+971',phone:'501234567',  imType:'WhatsApp', imAccount:'+971501234567', country:'UAE 🇦🇪',    address:'Business Bay, Dubai, UAE',                      responsibleSale:'Pluk', initials:'AR',color:'#9D174D',note:'',  createdAt:1749993600000},
-      {id:'CUS0004',name:'Yuki Tanaka',   companyName:'',               passportNumber:'TK4455667', passportImageUrl:'', email:'yuki.tanaka@email.jp',   countryCode:'+81', phone:'9012345678', imType:'LINE',     imAccount:'yuki_th',       country:'Japan 🇯🇵',  address:'1-2-3 Shibuya, Tokyo 150-0002, Japan',          responsibleSale:'Pluk', initials:'YT',color:'#065F46',note:'',  createdAt:1749993600000},
+    const SC=[
+      {id:'CUS0001',name:'John Martin',   companyName:'',               passportNumber:'A12345678', passportImageUrl:'', email:'john.martin@email.com', countryCode:'+33', phone:'612345678',  imType:'WhatsApp', imAccount:'+33612345678',  country:'France 🇫🇷', address:'12 Rue de la Paix, Paris 75001, France',       responsibleSale:'Pluk', initials:'JM',color:'#1E40AF',note:'',aliases:'[]',createdAt:1749993600000},
+      {id:'CUS0002',name:'Sara Kingston', companyName:'SK Imports Ltd.', passportNumber:'B98765432', passportImageUrl:'', email:'sara.k@email.com',       countryCode:'+44', phone:'7911123456', imType:'LINE',     imAccount:'sara_london',   country:'UK 🇬🇧',     address:'45 Oxford Street, London W1D 2DZ, UK',         responsibleSale:'Pluk', initials:'SK',color:'#5B21B6',note:'',aliases:'[]',createdAt:1749993600000},
+      {id:'CUS0003',name:'Ahmed Al-Rashid',companyName:'Al-Rashid Trade',passportNumber:'C11223344', passportImageUrl:'', email:'ahmed@alrashid.ae',     countryCode:'+971',phone:'501234567',  imType:'WhatsApp', imAccount:'+971501234567', country:'UAE 🇦🇪',    address:'Business Bay, Dubai, UAE',                      responsibleSale:'Pluk', initials:'AR',color:'#9D174D',note:'',aliases:'[]',createdAt:1749993600000},
+      {id:'CUS0004',name:'Yuki Tanaka',   companyName:'',               passportNumber:'TK4455667', passportImageUrl:'', email:'yuki.tanaka@email.jp',   countryCode:'+81', phone:'9012345678', imType:'LINE',     imAccount:'yuki_th',       country:'Japan 🇯🇵',  address:'1-2-3 Shibuya, Tokyo 150-0002, Japan',          responsibleSale:'Pluk', initials:'YT',color:'#065F46',note:'',aliases:'[]',createdAt:1749993600000},
     ];
-    const SEED_LOTS=[
-      {id:'LOT-20260618-005',customerId:'CUS0001',customerName:'John Martin',    shopName:'Mayabay Wholesale',       date:'2026-06-18',time:'10:30',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:3,actualWeight:4.2,volWeight:2.8, rack:'A-02-1',dn:'DN-2026-0456',note:'',photoCount:3,status:'in_warehouse'},
-      {id:'LOT-20260620-009',customerId:'CUS0001',customerName:'John Martin',    shopName:'ร้านผ้าไหมไทย (สำเพ็ง)',date:'2026-06-20',time:'14:15',pkgType:'roll', pkgUnit:'ม้วน',   pkgCount:2,actualWeight:3.1,volWeight:1.9, rack:'B-01-3',dn:'',            note:'',photoCount:2,status:'in_warehouse'},
-      {id:'LOT-20260621-011',customerId:'CUS0001',customerName:'John Martin',    shopName:'ร้านเสื้อผ้า (จตุจักร)', date:'2026-06-21',time:'09:00',pkgType:'loose',pkgUnit:'ชิ้น',   pkgCount:7,actualWeight:2.5,volWeight:null,rack:null,    dn:'',            note:'',photoCount:7,status:'in_warehouse'},
-      {id:'LOT-20260621-012',customerId:'CUS0003',customerName:'Ahmed Al-Rashid',shopName:'ร้านผ้าไหมไทย (สำเพ็ง)',date:'2026-06-21',time:'11:45',pkgType:'bag',  pkgUnit:'ถุง',    pkgCount:5,actualWeight:6.2,volWeight:3.9, rack:'A-01-4',dn:'',            note:'',photoCount:5,status:'in_warehouse'},
-      {id:'LOT-20260622-013',customerId:'CUS0003',customerName:'Ahmed Al-Rashid',shopName:'Mayabay Wholesale',       date:'2026-06-22',time:'13:20',pkgType:'loose',pkgUnit:'ชิ้น',   pkgCount:2,actualWeight:1.5,volWeight:null,rack:null,    dn:'',            note:'',photoCount:2,status:'in_warehouse'},
-      {id:'LOT-20260617-003',customerId:'CUS0002',customerName:'Sara Kingston',  shopName:'Mayabay Wholesale',       date:'2026-06-17',time:'15:00',pkgType:'sack', pkgUnit:'กระสอบ',pkgCount:1,actualWeight:8.0,volWeight:5.5, rack:'A-03-2',dn:'',            note:'',photoCount:1,status:'consolidated'},
-      {id:'LOT-20260619-007',customerId:'CUS0002',customerName:'Sara Kingston',  shopName:'ร้านเสื้อผ้า (จตุจักร)', date:'2026-06-19',time:'10:00',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:4,actualWeight:3.8,volWeight:4.1, rack:'C-01-1',dn:'',            note:'',photoCount:4,status:'consolidated'},
-      {id:'LOT-20260615-001',customerId:'CUS0004',customerName:'Yuki Tanaka',    shopName:'ร้านผ้าไหมไทย (สำเพ็ง)',date:'2026-06-15',time:'09:30',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:6,actualWeight:5.4,volWeight:4.8, rack:'B-02-1',dn:'',            note:'',photoCount:6,status:'consolidated'},
-      {id:'LOT-20260616-002',customerId:'CUS0004',customerName:'Yuki Tanaka',    shopName:'Mayabay Wholesale',       date:'2026-06-16',time:'16:00',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:2,actualWeight:2.1,volWeight:1.6, rack:'B-02-2',dn:'',            note:'',photoCount:2,status:'consolidated'},
+    const SL=[
+      {id:'LOT-20260618-005',customerId:'CUS0001',customerName:'John Martin',    shopName:'Mayabay Wholesale',       date:'2026-06-18',time:'10:30',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:3,actualWeight:4.2,volWeight:2.8, rack:'A-02-1',dn:'DN-2026-0456',note:'',photoCount:3,status:'in_warehouse',photoUrls:'[]'},
+      {id:'LOT-20260620-009',customerId:'CUS0001',customerName:'John Martin',    shopName:'ร้านผ้าไหมไทย (สำเพ็ง)',date:'2026-06-20',time:'14:15',pkgType:'roll', pkgUnit:'ม้วน',   pkgCount:2,actualWeight:3.1,volWeight:1.9, rack:'B-01-3',dn:'',            note:'',photoCount:2,status:'in_warehouse',photoUrls:'[]'},
+      {id:'LOT-20260621-011',customerId:'CUS0001',customerName:'John Martin',    shopName:'ร้านเสื้อผ้า (จตุจักร)', date:'2026-06-21',time:'09:00',pkgType:'loose',pkgUnit:'ชิ้น',   pkgCount:7,actualWeight:2.5,volWeight:null,rack:null,    dn:'',            note:'',photoCount:7,status:'in_warehouse',photoUrls:'[]'},
+      {id:'LOT-20260621-012',customerId:'CUS0003',customerName:'Ahmed Al-Rashid',shopName:'ร้านผ้าไหมไทย (สำเพ็ง)',date:'2026-06-21',time:'11:45',pkgType:'bag',  pkgUnit:'ถุง',    pkgCount:5,actualWeight:6.2,volWeight:3.9, rack:'A-01-4',dn:'',            note:'',photoCount:5,status:'in_warehouse',photoUrls:'[]'},
+      {id:'LOT-20260622-013',customerId:'CUS0003',customerName:'Ahmed Al-Rashid',shopName:'Mayabay Wholesale',       date:'2026-06-22',time:'13:20',pkgType:'loose',pkgUnit:'ชิ้น',   pkgCount:2,actualWeight:1.5,volWeight:null,rack:null,    dn:'',            note:'',photoCount:2,status:'in_warehouse',photoUrls:'[]'},
+      {id:'LOT-20260617-003',customerId:'CUS0002',customerName:'Sara Kingston',  shopName:'Mayabay Wholesale',       date:'2026-06-17',time:'15:00',pkgType:'sack', pkgUnit:'กระสอบ',pkgCount:1,actualWeight:8.0,volWeight:5.5, rack:'A-03-2',dn:'',            note:'',photoCount:1,status:'consolidated',photoUrls:'[]'},
+      {id:'LOT-20260619-007',customerId:'CUS0002',customerName:'Sara Kingston',  shopName:'ร้านเสื้อผ้า (จตุจักร)', date:'2026-06-19',time:'10:00',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:4,actualWeight:3.8,volWeight:4.1, rack:'C-01-1',dn:'',            note:'',photoCount:4,status:'consolidated',photoUrls:'[]'},
+      {id:'LOT-20260615-001',customerId:'CUS0004',customerName:'Yuki Tanaka',    shopName:'ร้านผ้าไหมไทย (สำเพ็ง)',date:'2026-06-15',time:'09:30',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:6,actualWeight:5.4,volWeight:4.8, rack:'B-02-1',dn:'',            note:'',photoCount:6,status:'consolidated',photoUrls:'[]'},
+      {id:'LOT-20260616-002',customerId:'CUS0004',customerName:'Yuki Tanaka',    shopName:'Mayabay Wholesale',       date:'2026-06-16',time:'16:00',pkgType:'box',  pkgUnit:'กล่อง',  pkgCount:2,actualWeight:2.1,volWeight:1.6, rack:'B-02-2',dn:'',            note:'',photoCount:2,status:'consolidated',photoUrls:'[]'},
     ];
-    const SEED_SHIPS=[
-      {id:'CONSOL-20260621-001',customerId:'CUS0002',lotIds:['LOT-20260617-003','LOT-20260619-007'],destination:'GB',destinationLabel:'United Kingdom 🇬🇧',carrier:'DHL Express',sendDate:'2026-06-23',note:'',totalActualKg:11.8,totalVolKg:9.6,totalChargeableKg:11.8,totalPackages:5,status:'consolidated',awb:'',dispatchDate:'',tracking:[{key:'received',label:'รับเข้าคลัง',date:'2026-06-17',note:'รับของจาก 2 ร้านค้า',done:true},{key:'consolidated',label:'รวม Shipment',date:'2026-06-21',note:'',done:true}],createdAt:Date.now()-86400000},
-      {id:'CONSOL-20260620-001',customerId:'CUS0004',lotIds:['LOT-20260615-001','LOT-20260616-002'],destination:'JP',destinationLabel:'Japan 🇯🇵',carrier:'DHL Express',sendDate:'2026-06-20',note:'',totalActualKg:7.5,totalVolKg:6.4,totalChargeableKg:7.5,totalPackages:8,status:'in_transit',awb:'DHL-1234567890',dispatchDate:'2026-06-20',tracking:[{key:'received',label:'รับเข้าคลัง',date:'2026-06-15',note:'รับของจาก 2 ร้านค้า',done:true},{key:'consolidated',label:'รวม Shipment',date:'2026-06-20',note:'',done:true},{key:'dispatched',label:'ส่งออกจากไทย',date:'2026-06-20',note:'AWB: DHL-1234567890',done:true},{key:'in_transit',label:'กำลังขนส่ง',date:'2026-06-21',note:'สินค้าอยู่ที่ Hong Kong',done:true}],createdAt:Date.now()-86400000*2},
+    const SS=[
+      {id:'CONSOL-20260621-001',customerId:'CUS0002',lotIds:JSON.stringify(['LOT-20260617-003','LOT-20260619-007']),destination:'GB',destinationLabel:'United Kingdom 🇬🇧',carrier:'DHL Express',sendDate:'2026-06-23',note:'',totalActualKg:11.8,totalVolKg:9.6,totalChargeableKg:11.8,totalPackages:5,status:'consolidated',awb:'',dispatchDate:'',tracking:JSON.stringify([{key:'received',label:'รับเข้าคลัง',date:'2026-06-17',note:'รับของจาก 2 ร้านค้า',done:true},{key:'consolidated',label:'รวม Shipment',date:'2026-06-21',note:'',done:true}]),createdAt:Date.now()-86400000},
+      {id:'CONSOL-20260620-001',customerId:'CUS0004',lotIds:JSON.stringify(['LOT-20260615-001','LOT-20260616-002']),destination:'JP',destinationLabel:'Japan 🇯🇵',carrier:'DHL Express',sendDate:'2026-06-20',note:'',totalActualKg:7.5,totalVolKg:6.4,totalChargeableKg:7.5,totalPackages:8,status:'in_transit',awb:'DHL-1234567890',dispatchDate:'2026-06-20',tracking:JSON.stringify([{key:'received',label:'รับเข้าคลัง',date:'2026-06-15',note:'รับของจาก 2 ร้านค้า',done:true},{key:'consolidated',label:'รวม Shipment',date:'2026-06-20',note:'',done:true},{key:'dispatched',label:'ส่งออกจากไทย',date:'2026-06-20',note:'AWB: DHL-1234567890',done:true},{key:'in_transit',label:'กำลังขนส่ง',date:'2026-06-21',note:'สินค้าอยู่ที่ Hong Kong',done:true}]),createdAt:Date.now()-86400000*2},
     ];
-    const SEED_SHOPS=[
+    const SP=[
       {id:'shop0001',name:'Mayabay Wholesale',market:'สำเพ็ง',address:'ถ.เยาวราช กรุงเทพ ชั้น 1 ตึก B',contactType:'line',contactValue:'@mayabay',productTypes:'ผ้า,เสื้อผ้า,สิ่งทอ',note:'',active:true},
       {id:'shop0002',name:'ร้านผ้าไหมไทย',market:'สำเพ็ง',address:'สำเพ็ง ซอย 3 เยาวราช กรุงเทพ',contactType:'phone',contactValue:'02-xxx-xxxx',productTypes:'ผ้าไหม,ผ้าฝ้าย,เส้นด้าย',note:'เปิด จ-ศ',active:true},
       {id:'shop0003',name:'ร้านเสื้อผ้าพรีเมี่ยม',market:'จตุจักร',address:'ตลาดจตุจักร โซน C โซน 3',contactType:'facebook',contactValue:'JJ Premium Cloth',productTypes:'เสื้อผ้าแฟชั่น,กระเป๋า,รองเท้า',note:'',active:true},
     ];
-    LOCAL.customers = SEED_CUSTS.map(augmentCust);
-    LOCAL.shops     = SEED_SHOPS;
-    LOCAL.lots      = SEED_LOTS;
-    LOCAL.ships     = SEED_SHIPS;
-    LOCAL.config    = {lot_ctr:14,co_ctr:2,cust_ctr:5,shop_ctr:4,seeded:true};
-    await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'seed',customers:SEED_CUSTS,shops:SEED_SHOPS,lots:SEED_LOTS,ships:SEED_SHIPS,config:LOCAL.config})});
+    const SCO=[
+      {id:'CONSOL-20260621-001',customerId:'CUS0002',customerName:'Sara Kingston',lotIds:JSON.stringify(['LOT-20260617-003','LOT-20260619-007']),destination:'GB',note:'',totalActualKg:11.8,totalVolKg:9.6,totalChargeableKg:11.8,totalPackages:5,status:'pending_cbm',cbmRows:'[]',cbmBoxes:0,cbmTotalWeight:0,cbmTotalCbm:0,cbmChargeable:0,cbmTransportType:'',carrier:'DHL Express',createdAt:Date.now()-86400000},
+      {id:'CONSOL-20260620-001',customerId:'CUS0004',customerName:'Yuki Tanaka',lotIds:JSON.stringify(['LOT-20260615-001','LOT-20260616-002']),destination:'JP',note:'',totalActualKg:7.5,totalVolKg:6.4,totalChargeableKg:7.5,totalPackages:8,status:'in_transit',cbmRows:'[]',cbmBoxes:0,cbmTotalWeight:0,cbmTotalCbm:0,cbmChargeable:0,cbmTransportType:'',carrier:'DHL Express',createdAt:Date.now()-86400000*2},
+    ];
+    await Promise.all([...SC.map(c=>this._ins('customers',c)),...SP.map(s=>this._ins('shops',s)),...SL.map(l=>this._ins('lots',l)),...SS.map(s=>this._ins('shipments',s)),...SCO.map(c=>this._ins('consolidations',c))]);
+    await Promise.all([this._cfg('lot_ctr','14'),this._cfg('co_ctr','2'),this._cfg('cust_ctr','5'),this._cfg('shop_ctr','4'),this._cfg('bk_ctr','1'),this._cfg('seeded','true')]);
+    LOCAL.customers=SC.map(augmentCust);LOCAL.shops=SP;LOCAL.lots=SL;LOCAL.ships=SS;LOCAL.consolidations=SCO;
+    LOCAL.config={lot_ctr:14,co_ctr:2,cust_ctr:5,shop_ctr:4,bk_ctr:1,seeded:true};
     showLoading(false);
   },
 };
@@ -5903,64 +5906,4 @@ function whRenderLots(){
     const showCust = !whCustFilter;
     const custCell = showCust ? `<td>
       <div style="display:flex;align-items:center;gap:7px">
-        <div class="cust-avatar" style="background:${c.color||'#374151'};width:26px;height:26px;font-size:9px;flex-shrink:0">${c.initials||'?'}</div>
-        <div>
-          <div style="font-size:12px;font-weight:600;line-height:1.3">${c.name||'-'}</div>
-          <div style="font-size:10px;color:var(--text-3)">${c.id||''}</div>
-        </div>
-      </div>
-    </td>` : '';
-    return `<tr>
-      <td><span class="lot-id-mono" style="font-size:12px">${l.id}</span></td>
-      ${custCell}
-      <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.shopName||''}">${l.shopName||'—'}</td>
-      <td style="font-size:12px;white-space:nowrap;color:var(--text-2)">${l.date||'—'}</td>
-      <td>${pkgTag} <span style="font-size:12px">${l.pkgCount} ${l.pkgUnit}</span></td>
-      <td style="font-family:var(--font-mono);font-size:13px;font-weight:600;white-space:nowrap">
-        ${chargeKg.toFixed(1)}<span style="font-size:10px;font-weight:400;color:var(--text-3)"> kg</span>
-        ${l.volWeight?`<div style="font-size:10px;color:var(--text-3);font-weight:400">vol ${l.volWeight.toFixed(1)} / act ${l.actualWeight.toFixed(1)}</div>`:''}
-      </td>
-      <td>${rackCell}</td>
-      <td style="font-size:12px;color:var(--text-2)">${l.dn||'—'}</td>
-    </tr>`;
-  }).join('');
-
-  const custTh = !whCustFilter ? '<th>ลูกค้า</th>' : '';
-  wrap.innerHTML = `<div style="overflow-x:auto">
-    <table class="wh-lot-table">
-      <thead><tr>
-        <th>Lot ID</th>
-        ${custTh}
-        <th>ร้านค้า</th>
-        <th>วันที่รับ</th>
-        <th>บรรจุภัณฑ์</th>
-        <th>Chargeable</th>
-        <th>ตำแหน่ง</th>
-        <th>DN</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>`;
-}
-
-// ════════════════════════════════════
-// INIT
-// ════════════════════════════════════
-document.addEventListener('DOMContentLoaded', async ()=>{
-  // init static UI
-  ibInit();
-  // load data from Sheets (or prompt to configure)
-  if(SCRIPT_URL){
-    await DB.loadAll();
-  } else {
-    setApiStatus(false,'ยังไม่เชื่อมต่อ');
-    // show config panel after a short delay
-    setTimeout(cfgOpen, 800);
-  }
-  // render all pages
-  ibPopulateCusts(); ibPopulateShops(); ibRefreshStats(); ibUpdateLotTag(); ibListRender();
-  coRefresh(); dpRender(); trRender(); custRender(); shopRender(); whRender();
-});
-</script>
-</body>
-</html>
+        <di
