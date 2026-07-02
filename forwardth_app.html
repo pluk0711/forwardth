@@ -1967,8 +1967,68 @@ function switchPage(id, btn){
 // INBOUND
 // ════════════════════════════════════
 const ib = {pkgType:'box',pkgUnit:'กล่อง',count:1,photos:{}};
-const ibPhotoCache = {}; // { lotId: {slotNum: dataURL} }
+const ibPhotoCache = {}; // legacy localStorage cache
+const ibLotPhotos  = {}; // { lotId: { slot: {id,url,uploadedBy,uploadedAt} } }
+let   ibdPhotoDeletes = {}; // slots to delete on save: { slot: true }
 let   ibDetailId   = null;
+
+// ── Image resize (canvas) ─────────────────────────────────────────────────────
+function resizeImage(file, maxPx=1200, quality=0.85){
+  return new Promise(resolve=>{
+    const img=new Image();
+    const objUrl=URL.createObjectURL(file);
+    img.onload=()=>{
+      const scale=Math.min(1,maxPx/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+      const cv=document.createElement('canvas');
+      cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(objUrl);
+      cv.toBlob(blob=>{
+        resolve(new File([blob],'photo.jpg',{type:'image/jpeg'}));
+      },'image/jpeg',quality);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(objUrl);resolve(file);};
+    img.src=objUrl;
+  });
+}
+
+// ── lot_photos table helpers ──────────────────────────────────────────────────
+async function ibLoadPhotos(lotId){
+  try{
+    const rows=await DB._get('lot_photos',`select=*&lotId=eq.${encodeURIComponent(lotId)}&order=slot.asc`);
+    ibLotPhotos[lotId]={};
+    (rows||[]).forEach(p=>{ ibLotPhotos[lotId][p.slot]=p; });
+    // Sync photoCount to LOCAL
+    const lot=DB.getLots().find(x=>x.id===lotId);
+    if(lot) lot.photoCount=Object.keys(ibLotPhotos[lotId]).length;
+  }catch(e){console.warn('ibLoadPhotos failed',e);ibLotPhotos[lotId]={};}
+}
+
+async function ibUpsertLotPhoto(lotId, slot, url){
+  const id=`PHOTO-${lotId}-${slot}`;
+  const data={id,lotId,slot,url,
+    uploadedBy:LOCAL.currentUser?.name||LOCAL.currentUser?.username||'',
+    uploadedAt:Date.now()};
+  await fetch(`${SUPA_URL}/rest/v1/lot_photos`,{
+    method:'POST',
+    headers:{...DB._h(),'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(data)
+  });
+  if(!ibLotPhotos[lotId]) ibLotPhotos[lotId]={};
+  ibLotPhotos[lotId][slot]=data;
+}
+
+async function ibDeleteLotPhoto(lotId, slot){
+  try{
+    const id=`PHOTO-${lotId}-${slot}`;
+    await fetch(`${SUPA_URL}/rest/v1/lot_photos?id=eq.${encodeURIComponent(id)}`,{
+      method:'DELETE', headers:DB._h()
+    });
+    ibDeletePhotoFromStorage(lotId,slot);
+    if(ibLotPhotos[lotId]) delete ibLotPhotos[lotId][slot];
+  }catch(e){console.warn('ibDeleteLotPhoto failed',e);}
+}
 
 function ibSavePhotosLS(lotId, photos){
   try{ localStorage.setItem('fth_photos_'+lotId, JSON.stringify(photos)); }catch(e){}
@@ -2192,7 +2252,7 @@ function ibListRender(){
   }).join('');
 }
 
-function ibShowDetail(id){
+async function ibShowDetail(id){
   ibDetailId=id;
   const l=DB.getLots().find(x=>x.id===id);
   if(!l) return;
@@ -2233,11 +2293,10 @@ function ibShowDetail(id){
     ${c.responsibleSale?`<div class="ib-detail-info-row"><span class="ib-detail-info-label">Sale</span><span class="ib-detail-info-val">👤 ${c.responsibleSale}</span></div>`:''}
     ${l.note?`<div class="ib-detail-info-row"><span class="ib-detail-info-label">หมายเหตุ</span><span class="ib-detail-info-val" style="color:var(--text-2)">${l.note}</span></div>`:''}
   `;
-  // Photos (full-size grid) — load from localStorage if not in memory
-  if(!ibPhotoCache[id]){
-    const fromLS=ibLoadPhotosLS(id);
-    if(fromLS) ibPhotoCache[id]=fromLS;
-  }
+  // Load photos from lot_photos table
+  await ibLoadPhotos(id);
+  // Also try localStorage for offline fallback
+  if(!ibPhotoCache[id]){const fromLS=ibLoadPhotosLS(id);if(fromLS)ibPhotoCache[id]=fromLS;}
   ibdPhotoEditMode=false;
   document.getElementById('ibd-photo-edit-btn').style.display='';
   document.getElementById('ibd-photo-add-btn').style.display='none';
@@ -2280,13 +2339,11 @@ function ibdPhotoToggleEdit(forceOff){
   document.getElementById('ibd-photo-save-btn').style.display  = ibdPhotoEditMode ? '' : 'none';
   document.getElementById('ibd-photo-cancel-btn').style.display= ibdPhotoEditMode ? '' : 'none';
   if(ibdPhotoEditMode){
-    const driveUrls=(l.photoUrls||[]);
-    const lsCache=ibPhotoCache[ibDetailId]||{};
+    // Init edits from lot_photos (Storage URLs) — empty = no pending changes
     ibdPhotoEdits={};
-    const totalSlots=Math.max(driveUrls.length,Object.keys(lsCache).length);
-    for(let i=1;i<=totalSlots;i++){
-      ibdPhotoEdits[i]=lsCache[i]||(driveUrls[i-1]||'');
-    }
+    ibdPhotoDeletes={};
+    const lotPh=ibLotPhotos[ibDetailId]||{};
+    Object.entries(lotPh).forEach(([s,p])=>{if(p&&p.url) ibdPhotoEdits[parseInt(s)]=p.url;});
   }
   ibdPhotoRender(l);
 }
@@ -2303,13 +2360,15 @@ function ibdPhotoAddSlot(){
 function ibdPhotoRender(l, overrideTotal){
   const photosEl = document.getElementById('ibd-photos');
   if(!photosEl) return;
-  const driveUrls = Array.isArray(l.photoUrls)?l.photoUrls:(l.photoUrls?JSON.parse(l.photoUrls):[]);
-  const lsCache   = ibPhotoCache[l.id]||{};
-  // Merge: prefer localStorage (latest), fall back to Drive URL
+  // Build merged from lot_photos table (canonical) + ibdPhotoEdits (pending in edit mode)
+  const lotPh=ibLotPhotos[l.id]||{};
   const merged={};
-  Object.entries(lsCache).forEach(([k,v])=>{if(v) merged[k]=v;});   // localStorage fallback
-  driveUrls.forEach((u,i)=>{if(u) merged[i+1]=u;});                  // Storage URL wins
-  const cached = ibdPhotoEditMode ? ibdPhotoEdits : merged;
+  Object.entries(lotPh).forEach(([s,p])=>{if(p&&p.url) merged[parseInt(s)]=p.url;});
+  // Overlay pending edits (data URLs or new Storage URLs)
+  if(ibdPhotoEditMode){
+    Object.entries(ibdPhotoEdits).forEach(([s,u])=>{if(u) merged[parseInt(s)]=u; else delete merged[parseInt(s)];});
+  }
+  const cached=merged;
   const pkgCount = l.pkgCount||1;
   const total = overrideTotal !== undefined ? overrideTotal : Math.max(pkgCount, Object.keys(cached).length);
   document.getElementById('ibd-photo-count').textContent = total ? total+' รูป' : '';
@@ -2361,43 +2420,35 @@ function ibdPhotoRender(l, overrideTotal){
   }
 }
 
-function ibdPhotoOnFile(slot, input){
+async function ibdPhotoOnFile(slot, input){
   const f=input.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=async ev=>{
-    const dataUrl=ev.target.result;
-    ibdPhotoEdits[slot]=dataUrl; // preview ทันที
-    const l=DB.getLots().find(x=>x.id===ibDetailId);
-    if(l) ibdPhotoRender(l);
-    // Upload to Supabase Storage
-    if(ibDetailId){
-      showToast('กำลังอัปโหลดรูป…');
-      const {url,err}=await ibUploadPhotoToStorage(ibDetailId,slot,f);
-      if(url){
-        ibdPhotoEdits[slot]=url; // แทนที่ data URL ด้วย Storage URL
-        const lot=DB.getLots().find(x=>x.id===ibDetailId);
-        if(lot){
-          let urls=Array.isArray(lot.photoUrls)?[...lot.photoUrls]:[];
-          while(urls.length<slot) urls.push('');
-          urls[slot-1]=url;
-          lot.photoUrls=urls;
-        }
-        showToast('อัปโหลดรูปสำเร็จ ✓');
-      } else {
-        showToast('อัปโหลดไม่สำเร็จ: '+(err||'ตรวจสอบ Storage bucket'),true);
-      }
-    }
-  };
-  r.readAsDataURL(f);
+  if(!ibDetailId) return;
+  const l=DB.getLots().find(x=>x.id===ibDetailId);
+  // 1. Resize image
+  showToast('กำลังปรับขนาดรูป…');
+  const resized=await resizeImage(f,1200,0.85);
+  // 2. Preview ทันที (data URL)
+  const reader=new FileReader();
+  reader.onload=ev=>{ ibdPhotoEdits[slot]=ev.target.result; if(l)ibdPhotoRender(l); };
+  reader.readAsDataURL(resized);
+  // 3. Upload to Storage
+  showToast('กำลังอัปโหลดรูป…');
+  const {url,err}=await ibUploadPhotoToStorage(ibDetailId,slot,resized);
+  if(url){
+    ibdPhotoEdits[slot]=url;
+    delete ibdPhotoDeletes[slot];
+    // Upsert to lot_photos immediately
+    await ibUpsertLotPhoto(ibDetailId,slot,url);
+    if(l)ibdPhotoRender(l);
+    showToast('อัปโหลดรูปสำเร็จ ✓');
+  } else {
+    showToast('อัปโหลดไม่สำเร็จ: '+(err||'ตรวจสอบ Storage'),true);
+  }
 }
 
 function ibdPhotoRemove(slot){
-  delete ibdPhotoEdits[slot];
-  // Re-index to remove gaps
-  const keys=Object.keys(ibdPhotoEdits).map(Number).sort((a,b)=>a-b);
-  const reindexed={};
-  keys.forEach((k,i)=>reindexed[i+1]=ibdPhotoEdits[k]);
-  ibdPhotoEdits=reindexed;
+  ibdPhotoDeletes[slot]=true;   // mark for deletion on save
+  delete ibdPhotoEdits[slot];   // hide from view
   const l=DB.getLots().find(x=>x.id===ibDetailId);
   if(l) ibdPhotoRender(l);
 }
@@ -2417,24 +2468,35 @@ function ibdRackSave(val){
   ibListRender();
 }
 
-function ibdPhotoSave(){
+async function ibdPhotoSave(){
   const l=DB.getLots().find(x=>x.id===ibDetailId);
   if(!l) return;
-  // Build photoUrls: merge existing + edits (Storage URLs take priority)
-  let urls=Array.isArray(l.photoUrls)?[...l.photoUrls]:[];
-  Object.entries(ibdPhotoEdits).forEach(([slot,url])=>{
-    const i=parseInt(slot)-1;
-    while(urls.length<=i) urls.push('');
-    if(url) urls[i]=url;
-  });
-  urls=urls.filter(u=>u); // remove empty slots
-  const newCount=urls.length;
-  l.photoUrls=urls;
+  // Process deletions
+  const delSlots=Object.keys(ibdPhotoDeletes).filter(s=>ibdPhotoDeletes[s]);
+  if(delSlots.length>0){
+    showToast('กำลังลบรูป…');
+    await Promise.all(delSlots.map(s=>ibDeleteLotPhoto(ibDetailId,parseInt(s))));
+    ibdPhotoDeletes={};
+  }
+  // Upload any remaining data URLs (fallback if auto-upload failed)
+  const dataEntries=Object.entries(ibdPhotoEdits).filter(([,u])=>u&&u.startsWith('data:'));
+  if(dataEntries.length>0){
+    showToast('กำลังอัปโหลด '+dataEntries.length+' รูป…');
+    await Promise.all(dataEntries.map(async([slot,dataUrl])=>{
+      try{
+        const res=await fetch(dataUrl);
+        const blob=await res.blob();
+        const resized=await resizeImage(new File([blob],'p.jpg',{type:'image/jpeg'}),1200,0.85);
+        const {url}=await ibUploadPhotoToStorage(ibDetailId,parseInt(slot),resized);
+        if(url){await ibUpsertLotPhoto(ibDetailId,parseInt(slot),url);ibdPhotoEdits[parseInt(slot)]=url;}
+      }catch(e){console.warn('Fallback upload failed slot',slot,e);}
+    }));
+  }
+  // Update photoCount in lots table
+  const newCount=Object.keys(ibLotPhotos[ibDetailId]||{}).length;
   l.photoCount=newCount;
-  DB.updateLot(ibDetailId,{photoCount:newCount,photoUrls:urls});
+  DB.updateLot(ibDetailId,{photoCount:newCount});
   logActivity('save_photos','lot',ibDetailId,{count:newCount});
-  ibPhotoCache[ibDetailId]=Object.assign({},ibdPhotoEdits);
-  ibSavePhotosLS(ibDetailId,ibPhotoCache[ibDetailId]);
   showToast('บันทึกรูปภาพเรียบร้อย');
   ibdPhotoToggleEdit(false);
   ibListRender();
