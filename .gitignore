@@ -1,0 +1,10 @@
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Mac
+.DS_Store
+
+# OneDrive temp files
+*.tmp
+~$*
