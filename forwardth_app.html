@@ -1999,7 +1999,21 @@ async function ibLoadPhotos(lotId){
     const rows=await DB._get('lot_photos',`select=*&lotId=eq.${encodeURIComponent(lotId)}&order=slot.asc`);
     ibLotPhotos[lotId]={};
     (rows||[]).forEach(p=>{ ibLotPhotos[lotId][p.slot]=p; });
-    // Sync photoCount to LOCAL
+
+    // Auto-migrate: ถ้า lot_photos ว่าง แต่ lots.photoUrls มีข้อมูล → migrate ทันที
+    if(Object.keys(ibLotPhotos[lotId]).length===0){
+      const lot=DB.getLots().find(x=>x.id===lotId);
+      let legacy=[];
+      try{ legacy=Array.isArray(lot?.photoUrls)?lot.photoUrls:(lot?.photoUrls?JSON.parse(lot.photoUrls):[]); }catch(e){}
+      const validUrls=legacy.filter(u=>u&&u.startsWith('http'));
+      if(validUrls.length>0){
+        console.log(`Migrating ${validUrls.length} photos for lot ${lotId} → lot_photos`);
+        await Promise.all(validUrls.map((url,i)=>ibUpsertLotPhoto(lotId,i+1,url)));
+        validUrls.forEach((url,i)=>{ ibLotPhotos[lotId][i+1]={id:`PHOTO-${lotId}-${i+1}`,lotId,slot:i+1,url}; });
+      }
+    }
+
+    // Sync photoCount
     const lot=DB.getLots().find(x=>x.id===lotId);
     if(lot) lot.photoCount=Object.keys(ibLotPhotos[lotId]).length;
   }catch(e){console.warn('ibLoadPhotos failed',e);ibLotPhotos[lotId]={};}
