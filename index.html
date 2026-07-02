@@ -1549,7 +1549,7 @@ textarea{resize:vertical;min-height:64px;}
 // ════════════════════════════════════
 // CONFIG — paste your Apps Script URL here OR use the UI button
 // ════════════════════════════════════
-let SCRIPT_URL = ''; // set by IIFE below after welcome screen check
+let SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx62ioYm1gXSeQZgtEJ4qRJn8yx0Ahme5DZTrL9_wTUyZhkIMc80PPtpLXDcSmNnMNnIQ/exec'; // hardcoded for GitHub Pages
 
 function cfgOpen(){
   const p=document.getElementById('cfg-panel');
@@ -1575,18 +1575,15 @@ function welcomeSave(){
   location.reload();
 }
 
-// Hide welcome screen only if URL already saved — runs as soon as script loads
+// Hide welcome screen — use localStorage override if set, otherwise use hardcoded URL
 (function(){
   const saved = localStorage.getItem('fth_script_url');
   if(saved && saved.startsWith('http')){
     SCRIPT_URL = saved;
-    const ws = document.getElementById('welcome-screen');
-    if(ws) ws.style.display = 'none';
-  } else {
-    // clear any bad value
-    localStorage.removeItem('fth_script_url');
-    SCRIPT_URL = '';
   }
+  // Always hide welcome screen since URL is hardcoded
+  const ws = document.getElementById('welcome-screen');
+  if(ws) ws.style.display = 'none';
 })();
 async function cfgSave(){
   const url=document.getElementById('cfg-url-input').value.trim();
