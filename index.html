@@ -469,9 +469,63 @@ textarea{resize:vertical;min-height:64px;}
   .action-bar{flex-direction:column;}
   .btn{width:100%;justify-content:center;}
 }
+
+/* ── Mobile Responsive ───────────────────────────────────────── */
+#hamburger-btn{display:none!important}
+@media(max-width:768px){
+  #hamburger-btn{display:flex!important;align-items:center}
+  .topbar nav{display:none!important}
+  .topbar nav.mob-open{display:flex!important;position:fixed;top:52px;left:0;right:0;background:var(--bg);border-bottom:2px solid var(--border);padding:10px 12px;flex-wrap:wrap;gap:4px;z-index:998;box-shadow:0 6px 20px rgba(0,0,0,.1)}
+  .topbar{height:52px;padding:0 12px;gap:8px}
+  .topbar .brand img{height:30px}
+  #user-displayname{display:none!important}
+  .page-wide,.page-view{padding:0!important}
+  .page-header{padding:14px 16px 0!important}
+  #ib-cards-wrap{display:block!important;padding:8px 12px}
+  .lot-mcard{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .1s}
+  .lot-mcard:active{background:var(--bg-2)}
+  .ib-list-table-wrap table{display:none}
+  .ib-list-filters{flex-direction:column;gap:8px!important;padding:8px 12px!important}
+  .ib-list-filters>*{width:100%!important}
+  .ib-detail-page{padding:0!important}
+  .ib-photo-full-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important}
+  .btn{min-height:40px;font-size:13px!important}
+  .modal-box{max-width:98vw!important;max-height:96vh!important}
+  .stats-cards{flex-direction:column!important;gap:8px!important}
+  .co-list-table,.bk-list-table{overflow-x:auto;display:block}
+}
 </style>
 </head>
 <body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="login-screen" style="display:flex;position:fixed;inset:0;background:linear-gradient(135deg,#f0f4f8 0%,#e2e8f0 100%);z-index:3000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:40px 36px;width:400px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.15)">
+    <div style="text-align:center;margin-bottom:28px">
+      <img id="login-logo" style="height:44px;width:auto;display:block;margin:0 auto" src="">
+    </div>
+    <h2 style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:4px;text-align:center">เข้าสู่ระบบ</h2>
+    <p style="font-size:12px;color:var(--text-2);margin-bottom:24px;text-align:center">World Air Logistics</p>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:5px">ชื่อผู้ใช้</label>
+      <input id="ln-user" type="text" placeholder="username" autocomplete="username"
+        onkeydown="if(event.key==='Enter')document.getElementById('ln-pass').focus()"
+        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--font-sans);color:var(--text-1)">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:5px">รหัสผ่าน</label>
+      <input id="ln-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()"
+        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;outline:none;font-family:var(--font-sans);color:var(--text-1)">
+    </div>
+    <div id="ln-err" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12px;color:#dc2626;margin-bottom:14px"></div>
+    <button onclick="doLogin()" id="ln-btn"
+      style="width:100%;padding:13px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-sans);letter-spacing:.3px">
+      เข้าสู่ระบบ
+    </button>
+  </div>
+</div>
+
 
 <!-- ══ WELCOME / SETUP SCREEN ══ -->
 <div id="welcome-screen" style="display:none;position:fixed;inset:0;background:#f8fafc;z-index:2000;flex-direction:column;align-items:center;justify-content:center;font-family:var(--font-sans)">
@@ -509,9 +563,16 @@ textarea{resize:vertical;min-height:64px;}
     <button class="nav-btn" onclick="switchPage('shops',this)">ร้านค้า</button>
     <button class="nav-btn" onclick="switchPage('warehouse',this)">คลังสินค้า</button>
   </nav>
-  <div class="topbar-right" style="display:none">
-    <div id="api-status"><span id="api-dot"></span><span id="api-lbl"></span></div>
-    <div class="avatar-sm">ST</div>
+  <div class="topbar-right" style="display:flex;gap:10px;align-items:center">
+    <div id="api-status" style="display:none"><span id="api-dot"></span><span id="api-lbl"></span></div>
+    <div id="user-chip" style="display:none;align-items:center;gap:8px">
+      <div id="user-avatar" class="avatar-sm" style="font-size:10px">--</div>
+      <span id="user-displayname" style="font-size:12px;font-weight:600;color:var(--text-1);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button onclick="doLogout()" title="ออกจากระบบ" style="font-size:11px;color:var(--text-3);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:var(--font-sans)">ออก</button>
+    </div>
+    <button id="hamburger-btn" onclick="toggleMobileNav()" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-1);line-height:1">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
   </div>
 </header>
 
@@ -779,6 +840,7 @@ textarea{resize:vertical;min-height:64px;}
           </tr></thead>
           <tbody id="ib-lot-tbody"></tbody>
         </table>
+      <div id="ib-cards-wrap" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -1627,7 +1689,7 @@ function setApiStatus(ok,msg){
 // ════════════════════════════════════
 // IN-MEMORY CACHE
 // ════════════════════════════════════
-const LOCAL = { customers:[], shops:[], lots:[], ships:[], consolidations:[], bookings:[], config:{lot_ctr:1,co_ctr:1,cust_ctr:1,shop_ctr:1,bk_ctr:1,seeded:false} };
+const LOCAL = { customers:[], shops:[], lots:[], ships:[], consolidations:[], bookings:[], users:[], config:{lot_ctr:1,co_ctr:1,cust_ctr:1,shop_ctr:1,bk_ctr:1,seeded:false}, currentUser:null };
 
 // ════════════════════════════════════
 // SUPABASE DB LAYER
@@ -1647,6 +1709,7 @@ const DB = {
 
   // ── reads (sync from cache) ──
   getLots:          ()=>LOCAL.lots,
+  getUsers:         ()=>LOCAL.users,
   getShips:         ()=>LOCAL.ships,
   getCustomers:     ()=>LOCAL.customers,
   getShops:         ()=>LOCAL.shops,
@@ -1696,7 +1759,7 @@ const DB = {
   async loadAll(){
     showLoading(true,'กำลังโหลดข้อมูลจาก Supabase…');
     try{
-      const [custs,shops,lots,ships,consols,bks,cfgRows]=await Promise.all([
+      const [custs,shops,lots,ships,consols,bks,cfgRows,users]=await Promise.all([
         this._get('customers','select=*&order=createdAt.asc'),
         this._get('shops','select=*'),
         this._get('lots','select=*&order=date.desc'),
@@ -1704,11 +1767,13 @@ const DB = {
         this._get('consolidations','select=*&order=createdAt.desc'),
         this._get('bookings','select=*&order=createdAt.desc'),
         this._get('config','select=*'),
+        this._get('users','select=*'),
       ]);
       LOCAL.customers      = (custs||[]).map(augmentCust);
       LOCAL.shops          = shops||[];
       LOCAL.lots           = lots||[];
       LOCAL.ships          = ships||[];
+      LOCAL.users          = users||[];
       LOCAL.consolidations = consols||[];
       LOCAL.bookings       = bks||[];
       LOCAL.config         = {lot_ctr:1,co_ctr:1,cust_ctr:1,shop_ctr:1,bk_ctr:1,seeded:false};
@@ -1821,23 +1886,33 @@ function peekCoId() {return `CONSOL-${dsNow()}-${String(DB.peekCoNum()).padStart
 function chg(lot){return lot.volWeight ? Math.max(lot.actualWeight, lot.volWeight) : lot.actualWeight;}
 
 // ── Drive photo upload helper ──
-async function ibUploadPhotoToDrive(lotId, slot, dataUrl){
-  if(!SCRIPT_URL||!dataUrl) return null;
+async function ibUploadPhotoToStorage(lotId, slot, file){
   try{
-    const [meta,b64]=dataUrl.split(',');
-    const mime=meta.match(/:(.*?);/)?.[1]||'image/jpeg';
-    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
-      action:'uploadLotPhoto',lotId,slot,base64:b64,mimeType:mime
-    })});
-    const j=await res.json();
-    return j.url||null;
-  }catch(e){console.warn('Drive upload failed',e);return null;}
+    const ct = file.type||'image/jpeg';
+    const ext = ct==='image/png'?'png':'jpg';
+    const path = `${lotId}/slot-${slot}.${ext}`;
+    const res = await fetch(`${SUPA_URL}/storage/v1/object/lot-photos/${path}`,{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':ct,'x-upsert':'true'},
+      body: file
+    });
+    if(!res.ok){
+      const e=await res.text();
+      console.warn('Storage upload failed',res.status,e);
+      return {url:null,err:`HTTP ${res.status}: ${e}`};
+    }
+    return {url:`${SUPA_URL}/storage/v1/object/public/lot-photos/${path}`,err:null};
+  }catch(e){console.warn('Storage upload failed',e);return {url:null,err:e.message};}
 }
-async function ibDeletePhotoFromDrive(lotId, slot){
-  if(!SCRIPT_URL) return;
+async function ibDeletePhotoFromStorage(lotId, slot){
   try{
-    await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'deleteLotPhoto',lotId,slot})});
-  }catch(e){console.warn('Drive delete failed',e);}
+    const paths=['jpg','png'].map(e=>`${lotId}/slot-${slot}.${e}`);
+    await fetch(`${SUPA_URL}/storage/v1/object/lot-photos`,{
+      method:'DELETE',
+      headers:{...DB._h(),'Content-Type':'application/json'},
+      body:JSON.stringify({prefixes:paths})
+    });
+  }catch(e){console.warn('Storage delete failed',e);}
 }
 
 // ── Date/time display helpers ──
@@ -2043,10 +2118,46 @@ function ibListRender(){
   });
   if(fSt) lots=lots.filter(l=>l.status===fSt);
   if(fCu) lots=lots.filter(l=>l.customerId===fCu);
-  if(q)   lots=lots.filter(l=>(l.id+l.shopName+(custById(l.customerId).name||'')).toLowerCase().includes(q));
+  if(q)   lots=lots.filter(l=>{const _c=custById(l.customerId);const _al=Array.isArray(_c.aliases)?_c.aliases.join(' '):(_c.aliases||'');return (l.id+' '+l.shopName+' '+(_c.name||'')+' '+_al).toLowerCase().includes(q);});
   const countEl=document.getElementById('ib-list-count');
   if(countEl) countEl.textContent=lots.length+' รายการ';
+  // Mobile: render cards
+  const isMob=window.innerWidth<768;
+  const cardsWrap=document.getElementById('ib-cards-wrap');
   const tbody=document.getElementById('ib-lot-tbody');
+  const tableEl=tbody?.closest('table');
+  if(isMob&&cardsWrap){
+    if(tableEl) tableEl.style.display='none';
+    cardsWrap.style.display='block';
+    if(!lots.length){cardsWrap.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--text-3)">ไม่พบรายการ Lot</div>`;return;}
+    cardsWrap.innerHTML=lots.map(l=>{
+      const c=custById(l.customerId);
+      const chargeKg=chg(l);
+      const photoCnt=ibPhotoCache[l.id]?Object.keys(ibPhotoCache[l.id]).length:(l.photoCount||0);
+      const rackTxt=l.rack?`<span style="font-family:var(--font-mono);font-size:10px;font-weight:600;background:var(--bg-2);border:1px solid var(--border);padding:1px 5px;border-radius:3px">${l.rack}</span>`:'';
+      return `<div class="lot-mcard" onclick="ibShowDetail('${l.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-1)">${l.id}</span>
+          ${statusBadge(l.status)}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div class="cust-avatar" style="background:${c.color||'#374151'};width:26px;height:26px;font-size:9px;flex-shrink:0">${c.initials||'?'}</div>
+          <span style="font-size:13px;font-weight:600;color:var(--text-1)">${c.name||'—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${l.shopName||'—'}</span>
+          <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text-1)">${chargeKg.toFixed(1)} kg</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--text-3)">${fmtDate(l.date)} ${l.time?l.time:''}</span>
+          <div style="display:flex;align-items:center;gap:6px">${rackTxt}${photoCnt>0?`<span style="font-size:11px;color:var(--primary-text);font-weight:600">📷 ${photoCnt}</span>`:''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+  if(cardsWrap) cardsWrap.style.display='none';
+  if(tableEl) tableEl.style.display='';
   if(!tbody) return;
   if(!lots.length){
     tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:40px 20px;color:var(--text-3)">ไม่พบรายการ Lot</td></tr>`;
@@ -2196,8 +2307,8 @@ function ibdPhotoRender(l, overrideTotal){
   const lsCache   = ibPhotoCache[l.id]||{};
   // Merge: prefer localStorage (latest), fall back to Drive URL
   const merged={};
-  driveUrls.forEach((u,i)=>{if(u) merged[i+1]=u;});
-  Object.entries(lsCache).forEach(([k,v])=>{if(v) merged[k]=v;});
+  Object.entries(lsCache).forEach(([k,v])=>{if(v) merged[k]=v;});   // localStorage fallback
+  driveUrls.forEach((u,i)=>{if(u) merged[i+1]=u;});                  // Storage URL wins
   const cached = ibdPhotoEditMode ? ibdPhotoEdits : merged;
   const pkgCount = l.pkgCount||1;
   const total = overrideTotal !== undefined ? overrideTotal : Math.max(pkgCount, Object.keys(cached).length);
@@ -2255,20 +2366,25 @@ function ibdPhotoOnFile(slot, input){
   const r=new FileReader();
   r.onload=async ev=>{
     const dataUrl=ev.target.result;
-    ibdPhotoEdits[slot]=dataUrl;
+    ibdPhotoEdits[slot]=dataUrl; // preview ทันที
     const l=DB.getLots().find(x=>x.id===ibDetailId);
     if(l) ibdPhotoRender(l);
-    // Upload to Drive in background
-    if(SCRIPT_URL&&ibDetailId){
-      const url=await ibUploadPhotoToDrive(ibDetailId,slot,dataUrl);
+    // Upload to Supabase Storage
+    if(ibDetailId){
+      showToast('กำลังอัปโหลดรูป…');
+      const {url,err}=await ibUploadPhotoToStorage(ibDetailId,slot,f);
       if(url){
+        ibdPhotoEdits[slot]=url; // แทนที่ data URL ด้วย Storage URL
         const lot=DB.getLots().find(x=>x.id===ibDetailId);
         if(lot){
-          const urls=[...(lot.photoUrls||[])];
+          let urls=Array.isArray(lot.photoUrls)?[...lot.photoUrls]:[];
           while(urls.length<slot) urls.push('');
           urls[slot-1]=url;
           lot.photoUrls=urls;
         }
+        showToast('อัปโหลดรูปสำเร็จ ✓');
+      } else {
+        showToast('อัปโหลดไม่สำเร็จ: '+(err||'ตรวจสอบ Storage bucket'),true);
       }
     }
   };
@@ -2304,13 +2420,21 @@ function ibdRackSave(val){
 function ibdPhotoSave(){
   const l=DB.getLots().find(x=>x.id===ibDetailId);
   if(!l) return;
-  ibPhotoCache[ibDetailId]=Object.assign({}, ibdPhotoEdits);
-  ibSavePhotosLS(ibDetailId, ibPhotoCache[ibDetailId]);
-  const newCount=Object.keys(ibdPhotoEdits).filter(k=>ibdPhotoEdits[k]).length;
-  // Build photoUrls array from Drive URLs already stored in l.photoUrls
-  const photoUrls=l.photoUrls||[];
-  DB.updateLot(ibDetailId, {photoCount:newCount, photoUrls});
+  // Build photoUrls: merge existing + edits (Storage URLs take priority)
+  let urls=Array.isArray(l.photoUrls)?[...l.photoUrls]:[];
+  Object.entries(ibdPhotoEdits).forEach(([slot,url])=>{
+    const i=parseInt(slot)-1;
+    while(urls.length<=i) urls.push('');
+    if(url) urls[i]=url;
+  });
+  urls=urls.filter(u=>u); // remove empty slots
+  const newCount=urls.length;
+  l.photoUrls=urls;
   l.photoCount=newCount;
+  DB.updateLot(ibDetailId,{photoCount:newCount,photoUrls:urls});
+  logActivity('save_photos','lot',ibDetailId,{count:newCount});
+  ibPhotoCache[ibDetailId]=Object.assign({},ibdPhotoEdits);
+  ibSavePhotosLS(ibDetailId,ibPhotoCache[ibDetailId]);
   showToast('บันทึกรูปภาพเรียบร้อย');
   ibdPhotoToggleEdit(false);
   ibListRender();
@@ -2430,6 +2554,7 @@ function ibSave(){
     ibSavePhotosLS(newLot.id, ibPhotoCache[newLot.id]);
   }
   DB.addLot(newLot);
+  logActivity('create_lot','lot',newLot.id,{customer:newLot.customerName,shop:newLot.shopName,weight:newLot.actualWeight,pkg:newLot.pkgCount+' '+newLot.pkgUnit});
   showToast('บันทึก '+newLot.id+' เรียบร้อย');
   ibPrintLot(newLot);
   ibCancelForm();
@@ -2935,8 +3060,8 @@ function codSaveLots(){
   const newLots=allLots.filter(l=>newIds.has(l.id));
 
   // Update lot statuses
-  oldIds.forEach(lid=>{if(!newIds.has(lid)) DB.updateLot(lid,{status:'in_warehouse'});});
-  newIds.forEach(lid=>{if(!oldIds.has(lid)) DB.updateLot(lid,{status:'consolidated'});});
+  oldIds.forEach(lid=>{if(!newIds.has(lid)){DB.updateLot(lid,{status:'in_warehouse'});logActivity('status_change','lot',lid,{from:'consolidated',to:'in_warehouse'});}});
+  newIds.forEach(lid=>{if(!newIds.has(lid)||!oldIds.has(lid)){if(!oldIds.has(lid)){DB.updateLot(lid,{status:'consolidated'});logActivity('status_change','lot',lid,{from:'in_warehouse',to:'consolidated'});}}});
 
   // Recalc weights
   const totalActualKg=parseFloat(newLots.reduce((s,l)=>s+l.actualWeight,0).toFixed(2));
@@ -3073,7 +3198,7 @@ function coConfirm(){
     cbmTotalWeight:0, cbmTotalCbm:0, cbmChargeable:0, cbmTransportType:'',
     createdAt:Date.now()
   });
-  sel.forEach(l=>DB.updateLot(l.id,{status:'consolidated'}));
+  sel.forEach(l=>{DB.updateLot(l.id,{status:'consolidated'});logActivity('status_change','lot',l.id,{from:'in_warehouse',to:'consolidated',via:'consolidation'});});
   showToast(`สร้าง ${sid} เรียบร้อย (${sel.length} Lot) — คลิก CONSOL เพื่อกรอก CBM`);
   setTimeout(()=>{coCloseNewForm();coRefresh();},400);
 }
@@ -5931,14 +6056,142 @@ function whRenderLots(){
 
 const ibOpenDetail = ibShowDetail; // alias
 
-// ── App startup ──────────────────────────────────────────────────────────────
-(async ()=>{
+// ── Password hash (SHA-256 + salt) ───────────────────────────────────────────
+async function hashPassword(pwd){
+  try{
+    const enc=new TextEncoder();
+    const buf=await crypto.subtle.digest('SHA-256',enc.encode(pwd+'worldair2026'));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){return btoa(unescape(encodeURIComponent(pwd+'worldair2026')));}
+}
+
+// ── Session ───────────────────────────────────────────────────────────────────
+const _SK='worldair_user_v1';
+function getSession(){try{return JSON.parse(sessionStorage.getItem(_SK)||'null');}catch(e){return null;}}
+function setSession(u){try{sessionStorage.setItem(_SK,JSON.stringify(u));}catch(e){}}
+function clearSession(){try{sessionStorage.removeItem(_SK);}catch(e){}}
+
+// ── User UI ───────────────────────────────────────────────────────────────────
+function updateUserUI(u){
+  LOCAL.currentUser=u;
+  const chip=document.getElementById('user-chip');
+  const av=document.getElementById('user-avatar');
+  const nm=document.getElementById('user-displayname');
+  if(u){
+    const ini=(u.name||u.username||'?').split(/[\s/]/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    if(chip){chip.style.display='flex';}
+    if(av)  av.textContent=ini;
+    if(nm)  nm.textContent=u.name||u.username;
+  }else{
+    if(chip)chip.style.display='none';
+  }
+}
+
+// ── Activity Log ──────────────────────────────────────────────────────────────
+async function logActivity(action,entityType,entityId,details={}){
+  if(!LOCAL.currentUser) return;
+  try{
+    const log={
+      id:'LOG-'+Date.now()+'-'+Math.random().toString(36).substr(2,5),
+      userId:LOCAL.currentUser.id,
+      userName:LOCAL.currentUser.name||LOCAL.currentUser.username,
+      action,entityType,entityId,
+      details:JSON.stringify({...details,by:LOCAL.currentUser.name||LOCAL.currentUser.username}),
+      createdAt:Date.now()
+    };
+    DB._ins('activity_logs',log);
+  }catch(e){console.warn('logActivity failed',e);}
+}
+
+// ── Login / Logout ────────────────────────────────────────────────────────────
+async function doLogin(){
+  const username=(document.getElementById('ln-user')?.value||'').trim().toLowerCase();
+  const password=document.getElementById('ln-pass')?.value||'';
+  const errEl=document.getElementById('ln-err');
+  const btn=document.getElementById('ln-btn');
+  if(!username||!password){
+    if(errEl){errEl.style.display='block';errEl.textContent='กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';}
+    return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='กำลังตรวจสอบ…';}
+  if(errEl) errEl.style.display='none';
+  try{
+    const users=await DB._get('users','select=*');
+    if(!users.length){
+      if(errEl){errEl.style.display='block';errEl.textContent='ยังไม่มีผู้ใช้ในระบบ — กรุณาสร้าง users ใน Supabase';}
+      if(btn){btn.disabled=false;btn.textContent='เข้าสู่ระบบ';}
+      return;
+    }
+    const hash=await hashPassword(password);
+    const user=users.find(u=>(u.username||'').toLowerCase()===username&&u.password===hash&&u.active!==false);
+    if(!user){
+      if(errEl){errEl.style.display='block';errEl.textContent='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';}
+      if(btn){btn.disabled=false;btn.textContent='เข้าสู่ระบบ';}
+      return;
+    }
+    const sess={id:user.id,name:user.name,username:user.username,role:user.role};
+    setSession(sess);
+    document.getElementById('login-screen').style.display='none';
+    await startApp(sess);
+  }catch(e){
+    if(errEl){errEl.style.display='block';errEl.textContent='เชื่อมต่อไม่ได้: '+e.message;}
+    if(btn){btn.disabled=false;btn.textContent='เข้าสู่ระบบ';}
+  }
+}
+
+function doLogout(){
+  if(!confirm('ออกจากระบบ?')) return;
+  clearSession();
+  updateUserUI(null);
+  LOCAL.currentUser=null;
+  // reset nav open state
+  document.querySelector('.topbar nav')?.classList.remove('mob-open');
+  ['ln-user','ln-pass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const err=document.getElementById('ln-err');
+  if(err)err.style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+
+// ── Mobile nav ────────────────────────────────────────────────────────────────
+function toggleMobileNav(){
+  const nav=document.querySelector('.topbar nav');
+  if(!nav)return;
+  nav.classList.toggle('mob-open');
+}
+// Close mobile nav on page switch
+const _origSwitchPage=switchPage;
+function switchPage(p,btn){
+  _origSwitchPage(p,btn);
+  document.querySelector('.topbar nav')?.classList.remove('mob-open');
+}
+
+// ── App startup (called after login/session restore) ──────────────────────────
+async function startApp(user){
+  updateUserUI(user);
+  // Copy logo to login screen
+  const li=document.getElementById('login-logo');
+  if(li){const bi=document.querySelector('.brand img');if(bi)li.src=bi.src;}
   await DB.loadAll();
   ibPopulateCusts();
   ibPopulateShops();
   ibRefreshStats();
   ibUpdateLotTag();
   ibListRender();
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+(()=>{
+  // Set logo on login screen immediately
+  const li=document.getElementById('login-logo');
+  if(li){const bi=document.querySelector('.brand img');if(bi)li.src=bi.src;}
+})();
+(async()=>{
+  const sess=getSession();
+  if(sess){
+    document.getElementById('login-screen').style.display='none';
+    await startApp(sess);
+  }
+  // else: login screen already visible, wait for user
 })();
 </script>
 </body>
