@@ -716,6 +716,10 @@ textarea{resize:vertical;min-height:64px;}
         <div class="field"><label>ที่อยู่จัดส่งปลายทาง (เต็ม)</label><textarea id="cf-address" rows="2" placeholder="เช่น 123 Main St, New York, NY 10001, USA" style="resize:vertical;min-height:52px"></textarea></div>
         <div style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;padding-top:4px;border-top:1px solid var(--border)">เอกสาร</div>
         <div class="field"><label>เลขพาสปอร์ต</label><input type="text" id="cf-passport" placeholder="เช่น A12345678"></div>
+        <div class="cols-2 form-grid">
+          <div class="field"><label>EORI Number</label><input type="text" id="cf-eori" placeholder="เช่น GB123456789000"></div>
+          <div class="field"><label>Tax / VAT Number</label><input type="text" id="cf-tax" placeholder="เช่น FR12345678901"></div>
+        </div>
         <div class="field">
           <label>รูปพาสปอร์ต</label>
           <div id="cf-passport-preview-wrap" style="display:none;margin-bottom:8px">
@@ -836,9 +840,17 @@ textarea{resize:vertical;min-height:64px;}
         <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--text-1)" id="ibd-lot-id">—</div>
       </div>
       <div id="ibd-status"></div>
-      <button class="btn btn-ghost btn-sm" onclick="ibPrintDetail()" style="gap:6px">
+      <button class="btn btn-ghost btn-sm" onclick="ibEditLot(ibDetailId)" style="gap:5px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        แก้ไข
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="ibDeleteLot(ibDetailId)" style="gap:5px;color:#ef4444">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        ลบ
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="ibPrintDetail()" style="gap:5px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        พิมพ์ใบรับ
+        พิมพ์
       </button>
     </div>
 
@@ -929,31 +941,6 @@ textarea{resize:vertical;min-height:64px;}
       </div>
       <div class="divider"></div>
       <div class="section-title" style="margin-bottom:12px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-        รูปแบบบรรจุภัณฑ์ <span class="req">*</span>
-      </div>
-      <div class="pkg-type-grid">
-        <button class="pkg-type-btn active" data-type="box" data-unit="กล่อง" onclick="ibSelectPkg(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          <span>กล่อง</span>
-        </button>
-        <button class="pkg-type-btn" data-type="sack" data-unit="กระสอบ" onclick="ibSelectPkg(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-          <span>กระสอบ</span>
-        </button>
-        <button class="pkg-type-btn" data-type="bag" data-unit="ถุง" onclick="ibSelectPkg(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
-          <span>ถุง</span>
-        </button>
-        <button class="pkg-type-btn" data-type="roll" data-unit="ม้วน" onclick="ibSelectPkg(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="4"/><path d="M2 12v6c0 2.21 4.48 4 10 4s10-1.79 10-4v-6"/><path d="M2 6v6c0 2.21 4.48 4 10 4s10-1.79 10-4V6"/></svg>
-          <span>ม้วน/ท่อ</span>
-        </button>
-
-      </div>
-
-      <div class="divider"></div>
-      <div class="section-title" style="margin-bottom:12px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
         จำนวนแพคเกจ <span class="req">*</span>
       </div>
@@ -964,27 +951,35 @@ textarea{resize:vertical;min-height:64px;}
           <input type="number" class="counter-val" id="ib-count" value="1" min="1" max="99" oninput="ibOnCount(this.value)">
           <button class="counter-btn" onclick="ibChangeCount(1)">+</button>
         </div>
-        <span style="font-size:13px;color:var(--text-2)" id="ib-unit">กล่อง</span>
+        <span style="font-size:13px;color:var(--text-2)">แพคเกจ</span>
       </div>
       <div class="divider"></div>
-      <div class="section-title" style="margin-bottom:12px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        รูปถ่ายแต่ละแพคเกจ
+      <div class="section-title" style="margin-bottom:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        รายละเอียดแต่ละแพก
       </div>
-      <div class="photo-header">
-        <span style="font-size:12px;color:var(--text-2)" id="ib-photo-txt">ยังไม่มีรูป</span>
-        <span class="photo-pct" id="ib-photo-pct">0%</span>
+      <div style="overflow-x:auto;margin-bottom:4px">
+        <table id="ib-pkg-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">
+          <thead>
+            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px;width:30px">#</th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px;width:52px">รูป</th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px">ประเภท</th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px">น้ำหนัก<br><span style="font-size:9px;font-weight:400">(kg)</span></th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px">จำนวนสินค้า<br><span style="font-size:9px;font-weight:400">ชิ้น/แพก</span></th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px">กว้าง<br><span style="font-size:9px;font-weight:400">(cm)</span></th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px">ยาว<br><span style="font-size:9px;font-weight:400">(cm)</span></th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px">สูง<br><span style="font-size:9px;font-weight:400">(cm)</span></th>
+              <th style="padding:7px 5px;text-align:center;color:#64748b;font-size:11px">ปริมาตร<br><span style="font-size:9px;font-weight:400">(kg)</span></th>
+            </tr>
+          </thead>
+          <tbody id="ib-pkg-tbody"></tbody>
+          <tfoot id="ib-pkg-tfoot"></tfoot>
+        </table>
       </div>
-      <div class="progress-track"><div class="progress-fill" id="ib-progress" style="width:0%"></div></div>
-      <div class="pkg-grid" id="ib-pkg-grid"></div>
       <div class="divider"></div>
       <div class="form-grid cols-2" style="margin-bottom:14px">
-        <div class="field"><label>น้ำหนักจริง (kg) <span class="req">*</span></label><input type="number" id="ib-w" step="0.1" min="0" placeholder="0.0" oninput="ibCalcWeight()"></div>
         <div class="field"><label>ตำแหน่งวางในคลัง</label><input type="text" id="ib-rack" placeholder="เช่น A-03-2"></div>
-        <input type="hidden" id="ib-wl" value="0"><input type="hidden" id="ib-ww" value="0"><input type="hidden" id="ib-wh" value="0">
-      </div>
-      <div class="weight-result" id="ib-wresult" style="display:none"></div>
-      <div class="form-grid cols-1" style="margin-bottom:14px">
         <div class="field"><label>หมายเหตุ</label><input type="text" id="ib-note" placeholder="เช่น สินค้าแตกหัก"></div>
       </div>
       <div class="action-bar">
@@ -1299,6 +1294,9 @@ textarea{resize:vertical;min-height:64px;}
       </div>
       <div id="cbm-empty-rows" style="text-align:center;padding:32px;color:var(--text-3);font-size:13px">กด "+ กล่อง" หรือ "+ ถุง" เพื่อเริ่มบันทึกข้อมูล</div>
     </div>
+
+    <!-- Package count check -->
+    <div id="cbm-pkg-check" style="display:none;margin-bottom:12px"></div>
 
     <!-- Summary + Actions -->
     <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start">
@@ -1736,6 +1734,7 @@ const DB = {
   // ── lot writes ──
   addLot(lot)    {LOCAL.lots.unshift(lot);this._ins('lots',lot);},
   updateLot(id,u){const i=LOCAL.lots.findIndex(l=>l.id===id);if(i>-1)LOCAL.lots[i]={...LOCAL.lots[i],...u};this._upd('lots',id,u);},
+  deleteLot(id)  {LOCAL.lots=LOCAL.lots.filter(l=>l.id!==id);this._del('lots',id);},
 
   // ── shipment writes ──
   addShip(s)       {LOCAL.ships.unshift(s);this._ins('shipments',s);},
@@ -1781,6 +1780,17 @@ const DB = {
         if(r.key==='bk_ctr')   LOCAL.config.bk_ctr  =Number(r.value)||1;
         if(r.key==='seeded')   LOCAL.config.seeded  =r.value==='true';
       });
+      // ── Auto-correct counters from actual data (prevents ID collision) ──
+      const maxN=(arr,re)=>Math.max(0,...arr.map(r=>{const m=(r.id||'').match(re);return m?parseInt(m[1]):0;}));
+      const maxCust =maxN(LOCAL.customers,/CUS(\d+)/);
+      const maxShop =maxN(LOCAL.shops,/shop(\d+)/i);
+      const maxLot  =maxN(LOCAL.lots,/-(\d+)$/);
+      const maxCo   =maxN(LOCAL.consolidations,/-(\d+)$/);
+      const maxBk   =maxN(LOCAL.bookings,/-(\d+)$/);
+      if(maxCust+1 >LOCAL.config.cust_ctr){LOCAL.config.cust_ctr=maxCust+1;this._cfg('cust_ctr',LOCAL.config.cust_ctr);}
+      if(maxShop+1 >LOCAL.config.shop_ctr){LOCAL.config.shop_ctr=maxShop+1;this._cfg('shop_ctr',LOCAL.config.shop_ctr);}
+      if(maxCo+1   >LOCAL.config.co_ctr)  {LOCAL.config.co_ctr  =maxCo+1;  this._cfg('co_ctr',  LOCAL.config.co_ctr);}
+      if(maxBk+1   >LOCAL.config.bk_ctr)  {LOCAL.config.bk_ctr  =maxBk+1;  this._cfg('bk_ctr',  LOCAL.config.bk_ctr);}
       if(!LOCAL.config.seeded) await this._seed();
       setApiStatus(true,'เชื่อมต่อ Supabase แล้ว');
     }catch(e){
@@ -1963,7 +1973,7 @@ function switchPage(id, btn){
 // ════════════════════════════════════
 // INBOUND
 // ════════════════════════════════════
-const ib = {pkgType:'box',pkgUnit:'กล่อง',count:1,photos:{}};
+const ib = {pkgType:'box',pkgUnit:'กล่อง',count:1,photos:{},pkgData:{},editId:null};
 const ibPhotoCache = {}; // legacy localStorage cache
 const ibLotPhotos  = {}; // { lotId: { slot: {id,url,uploadedBy,uploadedAt} } }
 let   ibdPhotoDeletes = {}; // slots to delete on save: { slot: true }
@@ -2157,7 +2167,60 @@ function ibShowForm(){
   document.getElementById('ib-form-modal').classList.add('open');
 }
 function ibCancelForm(){
+  ib.editId=null;
   document.getElementById('ib-form-modal').classList.remove('open');
+}
+
+function ibEditLot(id){
+  const l=DB.getLots().find(x=>x.id===id);
+  if(!l) return;
+  ibReset();
+  ib.editId=id;
+  // Header
+  document.getElementById('lot-id-tag').textContent=l.id;
+  // Customer
+  const cust=DB.getCustomers().find(c=>c.id===l.customerId);
+  if(cust){
+    document.getElementById('ib-cust').value=l.customerId;
+    document.getElementById('ib-cust-text').value=cust.name;
+    ibOnCustChange(l.customerId);
+  }
+  // Shop
+  document.getElementById('ib-shop').value=l.shopName||'';
+  document.getElementById('ib-shop-text').value=l.shopName||'';
+  // Date / time / DN
+  document.getElementById('ib-date').value=l.date||'';
+  document.getElementById('ib-time').value=l.time||'';
+  document.getElementById('ib-dn').value=l.dn||'';
+  document.getElementById('ib-rack').value=l.rack||'';
+  document.getElementById('ib-note').value=l.note||'';
+  // Packages
+  ib.count=l.pkgCount||1;
+  document.getElementById('ib-count').value=ib.count;
+  ib.pkgData={};
+  let pkgArr=[];
+  try{pkgArr=l.packages?JSON.parse(l.packages):[];}catch(e){}
+  if(pkgArr.length>0){
+    pkgArr.forEach((p,idx)=>{
+      ib.pkgData[idx+1]={weight:p.weight||'',itemCount:p.itemCount||'',w:p.w||'',l:p.l||'',h:p.h||'',pkgType:p.pkgType||'box',pkgUnit:p.pkgUnit||'กล่อง'};
+    });
+  } else {
+    // Legacy single-weight format
+    ib.pkgData[1]={weight:l.actualWeight||'',itemCount:'',w:'',l:'',h:'',pkgType:l.pkgType||'box',pkgUnit:l.pkgUnit||'กล่อง'};
+    for(let i=2;i<=ib.count;i++) ib.pkgData[i]={weight:'',itemCount:'',w:'',l:'',h:'',pkgType:l.pkgType||'box',pkgUnit:l.pkgUnit||'กล่อง'};
+  }
+  ibRenderPkgTable();
+  document.getElementById('ib-form-modal').classList.add('open');
+}
+
+function ibDeleteLot(id){
+  const l=DB.getLots().find(x=>x.id===id);
+  if(!l) return;
+  if(!confirm('ลบ '+id+' ออกจากระบบ?\nการดำเนินการนี้ไม่สามารถกู้คืนได้')) return;
+  DB.deleteLot(id);
+  showToast('ลบ '+id+' แล้ว');
+  ibCloseDetail();
+  ibListRender();
 }
 
 function ibFilterCustPopulate(){
@@ -2244,7 +2307,7 @@ function ibListRender(){
         </div>
       </td>
       <td style="font-size:12px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.shopName||''}">${l.shopName||'—'}</td>
-      <td>${pkgTag} <span style="font-size:12px">${l.pkgCount} ${l.pkgUnit}</span></td>
+      <td>${ibPkgSummaryHtml(l)}</td>
       <td style="font-family:var(--font-mono);font-size:13px;font-weight:600;white-space:nowrap">${parseFloat(l.actualWeight||0).toFixed(1)}<span style="font-size:10px;color:var(--text-3);font-weight:400"> kg</span></td>
       <td>${rackCell}</td>
       <td>${photoCell}</td>
@@ -2279,7 +2342,7 @@ async function ibShowDetail(id){
     <div class="ib-detail-info-row"><span class="ib-detail-info-label">ร้านค้า</span><span class="ib-detail-info-val">${l.shopName||'—'}</span></div>
     <div class="ib-detail-info-row"><span class="ib-detail-info-label">วันที่รับ</span><span class="ib-detail-info-val">${fmtDate(l.date)}${l.time?` <span style="font-size:12px;color:var(--text-2);margin-left:6px">${fmtTime(l.time)} น.</span>`:''}</span></div>
     ${l.dn?`<div class="ib-detail-info-row"><span class="ib-detail-info-label">เลขใบส่งของ</span><span class="ib-detail-info-val" style="font-family:var(--font-mono)">${l.dn}</span></div>`:''}
-    <div class="ib-detail-info-row"><span class="ib-detail-info-label">บรรจุภัณฑ์</span><span class="ib-detail-info-val"><span class="tag ${PKG_TAG[l.pkgType]||''}">${l.pkgUnit}</span> <b>${l.pkgCount}</b> ${l.pkgUnit}</span></div>
+    <div class="ib-detail-info-row"><span class="ib-detail-info-label">บรรจุภัณฑ์</span><span class="ib-detail-info-val">${ibPkgSummaryHtml(l)}</span></div>
     <div class="ib-detail-info-row"><span class="ib-detail-info-label">น้ำหนักจริง</span><span class="ib-detail-info-val" style="font-family:var(--font-mono)">${(l.actualWeight||0).toFixed(2)} kg</span></div>
 
     <div class="ib-detail-info-row" id="ibd-rack-row">
@@ -2544,61 +2607,142 @@ function ibSelectPkg(btn){
   document.querySelectorAll('.pkg-type-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   ib.pkgType=btn.dataset.type; ib.pkgUnit=btn.dataset.unit;
-  document.getElementById('ib-unit').textContent=ib.pkgUnit;
-  ibRenderGrid();ibUpdateProgress();
+  ibRenderPkgTable();
 }
 
-function ibChangeCount(d){ib.count=Math.max(1,Math.min(99,ib.count+d));document.getElementById('ib-count').value=ib.count;ibRenderGrid();ibUpdateProgress();}
-function ibOnCount(v){ib.count=Math.max(1,Math.min(99,parseInt(v)||1));ibRenderGrid();ibUpdateProgress();}
+function ibChangeCount(d){ib.count=Math.max(1,Math.min(99,ib.count+d));document.getElementById('ib-count').value=ib.count;ibRenderPkgTable();}
+function ibOnCount(v){ib.count=Math.max(1,Math.min(99,parseInt(v)||1));ibRenderPkgTable();}
 
-function ibRenderGrid(){
-  const grid=document.getElementById('ib-pkg-grid');grid.innerHTML='';
+const IB_PKG_OPTS=[
+  {type:'box',  unit:'กล่อง',   emoji:'📦'},
+  {type:'sack', unit:'กระสอบ', emoji:'🎒'},
+  {type:'bag',  unit:'ถุง',     emoji:'👜'},
+  {type:'roll', unit:'ม้วน',   emoji:'🎞️'},
+];
+function ibPkgTypeSelect(i,val){
+  if(!ib.pkgData[i]) ib.pkgData[i]={};
+  const opt=IB_PKG_OPTS.find(o=>o.type===val)||IB_PKG_OPTS[0];
+  ib.pkgData[i].pkgType=opt.type; ib.pkgData[i].pkgUnit=opt.unit;
+}
+function ibRenderPkgTable(){
+  const tbody=document.getElementById('ib-pkg-tbody');
+  if(!tbody) return;
+  tbody.innerHTML='';
   for(let i=1;i<=ib.count;i++){
+    if(!ib.pkgData[i]) ib.pkgData[i]={weight:'',itemCount:'',w:'',l:'',h:'',pkgType:ib.pkgType,pkgUnit:ib.pkgUnit};
+    const d=ib.pkgData[i];
+    const curType=d.pkgType||ib.pkgType||'box';
     const has=!!ib.photos[i];
-    const slot=document.createElement('div');slot.className='pkg-slot'+(has?' has-photo':'');
-    const num=document.createElement('span');num.className='slot-num';num.textContent='#'+i;slot.appendChild(num);
-    if(has){
-      if(typeof ib.photos[i]==='string'){const img=document.createElement('img');img.src=ib.photos[i];slot.appendChild(img);}
-      else{slot.appendChild(mkSvg('<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'));const l=document.createElement('span');l.className='slot-label';l.textContent='มีรูปแล้ว';slot.appendChild(l);}
-      const b=document.createElement('span');b.className='slot-badge badge-ok';b.textContent='OK';slot.appendChild(b);
-    } else {
-      slot.appendChild(mkSvg('<path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>'));
-      const l=document.createElement('span');l.className='slot-label';l.textContent='ถ่ายรูป';slot.appendChild(l);
-      const b=document.createElement('span');b.className='slot-badge badge-empty';b.textContent='ยังไม่มี';slot.appendChild(b);
-    }
-    const fi=document.createElement('input');fi.type='file';fi.accept='image/*';fi.capture='environment';
-    fi.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{ib.photos[i]=ev.target.result;ibRenderGrid();ibUpdateProgress();};r.readAsDataURL(f);});
-    slot.appendChild(fi);grid.appendChild(slot);
+    const photoUrl=(has&&typeof ib.photos[i]==='string')?ib.photos[i]:null;
+    const wv=(d.w&&d.l&&d.h)?parseFloat(((parseFloat(d.w)*parseFloat(d.l)*parseFloat(d.h))/5000).toFixed(2)):null;
+    const inp=(field,val,ph,w)=>`<input type="number" min="0" step="${field==='weight'?'0.1':'1'}" placeholder="${ph}" value="${val}"
+      style="width:${w}px;padding:5px 6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;text-align:center;outline:none"
+      onfocus="this.style.borderColor='#0f6b50'" onblur="this.style.borderColor='#e2e8f0'"
+      oninput="ibPkgField(${i},'${field}',this.value)">`;
+    const typeOpts=IB_PKG_OPTS.map(o=>`<option value="${o.type}" ${curType===o.type?'selected':''}>${o.emoji} ${o.unit}</option>`).join('');
+    const photoCell=photoUrl
+      ?`<img src="${photoUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;display:block;cursor:pointer;border:2px solid #16a34a" onclick="document.getElementById('ib-file-${i}').click()">`
+      :`<div onclick="document.getElementById('ib-file-${i}').click()"
+          style="width:44px;height:44px;border-radius:6px;background:#f8fafc;border:1.5px dashed #cbd5e1;
+                 display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:2px">
+          <span style="font-size:18px">📷</span>
+          <span style="font-size:9px;color:#94a3b8">ถ่ายรูป</span>
+        </div>`;
+    const tr=document.createElement('tr');
+    tr.style.cssText='border-bottom:1px solid #f1f5f9';
+    tr.innerHTML=`
+      <td style="padding:6px 4px;text-align:center;color:#94a3b8;font-size:11px;font-weight:700">#${i}</td>
+      <td style="padding:5px 4px;text-align:center">
+        <div style="margin:0 auto;width:44px">${photoCell}</div>
+        <input type="file" id="ib-file-${i}" accept="image/*" capture="environment" style="display:none"
+          onchange="ibHandlePhoto(event,${i})">
+      </td>
+      <td style="padding:4px 5px">
+        <select onchange="ibPkgTypeSelect(${i},this.value)"
+          style="font-size:11px;padding:4px 5px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;width:80px">
+          ${typeOpts}
+        </select>
+      </td>
+      <td style="padding:4px">${inp('weight',d.weight,'0.0',62)}</td>
+      <td style="padding:4px">${inp('itemCount',d.itemCount,'0',58)}</td>
+      <td style="padding:4px">${inp('w',d.w,'0',48)}</td>
+      <td style="padding:4px">${inp('l',d.l,'0',48)}</td>
+      <td style="padding:4px">${inp('h',d.h,'0',48)}</td>
+      <td style="padding:6px 4px;text-align:center;font-family:monospace;font-size:12px;color:${wv?'#0f6b50':'#cbd5e1'}" id="ib-vol-${i}">${wv?wv.toFixed(2):'—'}</td>`;
+    tbody.appendChild(tr);
   }
+  ibPkgCalcTotals();
 }
-
-function ibUpdateProgress(){
-  const done=Object.keys(ib.photos).filter(k=>parseInt(k)<=ib.count&&ib.photos[k]).length,total=ib.count,pct=total?Math.round(done/total*100):0;
-  document.getElementById('ib-photo-txt').textContent=done===0?'ยังไม่มีรูป':done===total?`ถ่ายครบ ${total} ${ib.pkgUnit}`:`ถ่ายแล้ว ${done}/${total}`;
-  document.getElementById('ib-photo-pct').textContent=pct+'%';
-  document.getElementById('ib-progress').style.width=pct+'%';
+function ibHandlePhoto(e,slot){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    ib.photos[slot]=ev.target.result;
+    // Replace cell content with thumbnail
+    const td=document.querySelector(`#ib-file-${slot}`)?.closest('td');
+    if(td){
+      const wrap=td.querySelector('div');
+      if(wrap) wrap.innerHTML=`<img src="${ev.target.result}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;display:block;cursor:pointer;border:2px solid #16a34a" onclick="document.getElementById('ib-file-${slot}').click()">`;
+    }
+  };
+  r.readAsDataURL(f);
 }
-
-function ibCalcWeight(){
-  const a=parseFloat(document.getElementById('ib-w').value)||0,l=parseFloat(document.getElementById('ib-wl').value)||0,w=parseFloat(document.getElementById('ib-ww').value)||0,h=parseFloat(document.getElementById('ib-wh').value)||0;
-  const wr=document.getElementById('ib-wresult');
-  if(!a&&!(l&&w&&h)){wr.style.display='none';return;}
-  const vol=parseFloat(((l*w*h)/5000).toFixed(2)),c=Math.max(a,vol),isV=vol>a;
-  wr.style.display='grid';
-  document.getElementById('ib-disp-a').textContent=a.toFixed(2)+' kg';
-  document.getElementById('ib-disp-v').textContent=(l&&w&&h)?vol.toFixed(2)+' kg':'—';
-  document.getElementById('ib-disp-c').innerHTML=c.toFixed(2)+' kg <span class="chg-tag '+(isV?'':'actual')+'">'+(isV?'ปริมาตร':'จริง')+'</span>';
+function ibPkgField(i,field,val){
+  if(!ib.pkgData[i]) ib.pkgData[i]={weight:'',itemCount:'',w:'',l:'',h:''};
+  ib.pkgData[i][field]=val;
+  const d=ib.pkgData[i];
+  const wv=(d.w&&d.l&&d.h)?parseFloat(((parseFloat(d.w)*parseFloat(d.l)*parseFloat(d.h))/5000).toFixed(2)):null;
+  const cell=document.getElementById('ib-vol-'+i);
+  if(cell){cell.style.color=wv?'#0f6b50':'#cbd5e1';cell.textContent=wv?wv.toFixed(2):'—';}
+  ibPkgCalcTotals();
 }
+function ibPkgCalcTotals(){
+  let tw=0,ti=0,tv=0;
+  for(let i=1;i<=ib.count;i++){
+    const d=ib.pkgData[i]||{};
+    tw+=parseFloat(d.weight)||0;
+    ti+=parseInt(d.itemCount)||0;
+    const dv=(d.w&&d.l&&d.h)?(parseFloat(d.w)*parseFloat(d.l)*parseFloat(d.h))/5000:0;
+    tv+=dv;
+  }
+  const tfoot=document.getElementById('ib-pkg-tfoot');
+  if(!tfoot) return;
+  tfoot.innerHTML=`<tr style="background:#f0fdf4;border-top:2px solid #bbf7d0">
+    <td colspan="3" style="padding:8px 6px;font-size:10px;font-weight:700;color:#166534;text-align:center">รวม</td>
+    <td style="padding:8px 4px;text-align:center;font-weight:700;font-family:monospace;font-size:13px;color:#166534">${tw.toFixed(2)}<br><span style="font-size:9px;font-weight:400">kg</span></td>
+    <td style="padding:8px 4px;text-align:center;font-weight:700;font-size:13px;color:#166534">${ti}<br><span style="font-size:9px;font-weight:400">ชิ้น</span></td>
+    <td colspan="3"></td>
+    <td style="padding:8px 4px;text-align:center;font-weight:700;font-family:monospace;font-size:13px;color:${tv>0?'#0284c7':'#94a3b8'}">${tv>0?tv.toFixed(2):'—'}<br><span style="font-size:9px;font-weight:400">${tv>0?'kg vol':''}</span></td>
+  </tr>`;
+}
+// Keep ibRenderGrid as alias for backward compatibility
+function ibRenderGrid(){ibRenderPkgTable();}
+function ibUpdateProgress(){}
+function ibCalcWeight(){}
 
 function ibSave(){
   const custVal=document.getElementById('ib-cust').value;
   const shopVal=document.getElementById('ib-shop').value;
-  const wVal=document.getElementById('ib-w').value;
   if(!custVal||custVal==='new'){showToast('กรุณาเลือกลูกค้า',true);return;}
   if(!shopVal){showToast('กรุณาเลือกร้านค้า',true);return;}
-  if(!wVal){showToast('กรุณากรอกน้ำหนักจริง',true);return;}
-  const l=parseFloat(document.getElementById('ib-wl').value)||0,w=parseFloat(document.getElementById('ib-ww').value)||0,h=parseFloat(document.getElementById('ib-wh').value)||0;
-  const vol=(l&&w&&h)?parseFloat(((l*w*h)/5000).toFixed(2)):null;
+  // Compute totals from per-package data
+  let totalWeight=0,totalVol=0,totalItems=0;
+  const pkgArr=[];
+  for(let i=1;i<=ib.count;i++){
+    const d=ib.pkgData[i]||{};
+    const pw=parseFloat(d.weight)||0;
+    const pi=parseInt(d.itemCount)||0;
+    const pv=(d.w&&d.l&&d.h)?parseFloat(((parseFloat(d.w)*parseFloat(d.l)*parseFloat(d.h))/5000).toFixed(3)):0;
+    totalWeight+=pw; totalItems+=pi; totalVol+=pv;
+    const dpt=d.pkgType||ib.pkgType||'box';
+    const dpu=d.pkgUnit||(IB_PKG_OPTS.find(o=>o.type===dpt)||{unit:'กล่อง'}).unit;
+    pkgArr.push({weight:pw,itemCount:pi,w:parseFloat(d.w)||0,l:parseFloat(d.l)||0,h:parseFloat(d.h)||0,volWeight:pv,pkgType:dpt,pkgUnit:dpu});
+  }
+  if(totalWeight===0){showToast('กรุณากรอกน้ำหนักอย่างน้อย 1 แพก',true);return;}
+  // Determine overall package type (single or mixed)
+  const uniqueTypes=[...new Set(pkgArr.map(p=>p.pkgType))];
+  const overallType=uniqueTypes.length===1?uniqueTypes[0]:'mixed';
+  const overallUnit=uniqueTypes.length===1?(IB_PKG_OPTS.find(o=>o.type===overallType)||{unit:'แพก'}).unit:'แพก';
   const custObj=DB.getCustomers().find(c=>c.id===custVal)||{};
   const newLot={
     id:lotId(), customerId:custVal,
@@ -2606,8 +2750,11 @@ function ibSave(){
     shopName:shopVal,
     date:document.getElementById('ib-date').value,
     time:document.getElementById('ib-time').value||'',
-    pkgType:ib.pkgType, pkgUnit:ib.pkgUnit, pkgCount:ib.count,
-    actualWeight:parseFloat(wVal), volWeight:vol,
+    pkgType:overallType, pkgUnit:overallUnit, pkgCount:ib.count,
+    actualWeight:parseFloat(totalWeight.toFixed(3)),
+    volWeight:totalVol>0?parseFloat(totalVol.toFixed(3)):null,
+    totalItems:totalItems,
+    packages:JSON.stringify(pkgArr),
     rack:document.getElementById('ib-rack').value,
     dn:document.getElementById('ib-dn').value,
     note:document.getElementById('ib-note').value,
@@ -2615,6 +2762,19 @@ function ibSave(){
     photoCount:Object.keys(ib.photos).filter(k=>parseInt(k)<=ib.count&&ib.photos[k]).length,
     status:'in_warehouse',
   };
+  // ── EDIT MODE: update existing lot ──
+  if(ib.editId){
+    const editingId=ib.editId;
+    const {id:_id,...updates}=newLot; // exclude id field
+    DB.updateLot(editingId,updates);
+    logActivity('edit_lot','lot',editingId,{weight:updates.actualWeight});
+    showToast('แก้ไข '+editingId+' เรียบร้อย');
+    ib.editId=null;
+    ibCancelForm();
+    ibListRender();
+    if(ibDetailId===editingId) ibShowDetail(editingId);
+    return;
+  }
   // Cache photos in memory and localStorage
   if(Object.keys(ib.photos).length>0){
     ibPhotoCache[newLot.id]={...ib.photos};
@@ -2654,18 +2814,32 @@ function ibSave(){
 }
 
 function ibReset(){
-  ['ib-cust','ib-shop','ib-dn','ib-rack','ib-note','ib-w','ib-wl','ib-ww','ib-wh'].forEach(id=>document.getElementById(id).value='');
+  ['ib-cust','ib-shop','ib-dn','ib-rack','ib-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['ib-cust-text','ib-shop-text'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('ib-cust-chip').style.display='none';
-  document.getElementById('ib-wresult').style.display='none';
-  document.querySelectorAll('.pkg-type-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelector('[data-type=box]').classList.add('active');
-  ib.pkgType='box';ib.pkgUnit='กล่อง';ib.count=1;ib.photos={};
-  document.getElementById('ib-count').value=1;document.getElementById('ib-unit').textContent='กล่อง';
+  const chip=document.getElementById('ib-cust-chip');if(chip)chip.style.display='none';
+  ib.pkgType='box';ib.pkgUnit='กล่อง';ib.count=1;ib.photos={};ib.pkgData={};ib.editId=null;
+  document.getElementById('ib-count').value=1;
   const _n=new Date();
   document.getElementById('ib-date').value=today();
   document.getElementById('ib-time').value=String(_n.getHours()).padStart(2,'0')+':'+String(_n.getMinutes()).padStart(2,'0');
-  ibRenderGrid();ibUpdateProgress();
+  ibRenderPkgTable();
+}
+
+// ── Package breakdown helpers ──
+function ibPkgBreakdown(l){
+  // Returns [{type,unit,count}] from packages JSON or falls back to single type
+  let arr=[];
+  try{arr=l.packages?JSON.parse(l.packages):[];}catch(e){}
+  if(!arr.length) return [{type:l.pkgType||'box',unit:l.pkgUnit||'แพก',count:l.pkgCount||1}];
+  const map={};
+  arr.forEach(p=>{const k=p.pkgType||'box';if(!map[k])map[k]={type:k,unit:p.pkgUnit||'แพก',count:0};map[k].count++;});
+  return Object.values(map);
+}
+function ibPkgSummaryHtml(l){
+  return ibPkgBreakdown(l).map(g=>`<span class="tag ${PKG_TAG[g.type]||''}"> ${g.unit}</span> <b>×${g.count}</b>`).join(' ');
+}
+function ibPkgSummaryText(l){
+  return ibPkgBreakdown(l).map(g=>`${g.unit} ×${g.count}`).join(', ');
 }
 
 function ibPrintLot(l){
@@ -2690,7 +2864,7 @@ function ibPrintLot(l){
       <tr><td>วันที่รับ</td><td>${l.date||'—'}${l.time?' เวลา '+l.time+' น.':''}</td></tr>
       <tr><td>ลูกค้า</td><td>${c.name||'—'} <span class="cid">${c.id||''}</span></td></tr>
       <tr><td>ร้านค้า</td><td>${l.shopName||'—'}</td></tr>
-      <tr><td>บรรจุภัณฑ์</td><td>${l.pkgUnit} ×${l.pkgCount}</td></tr>
+      <tr><td>บรรจุภัณฑ์</td><td>${ibPkgSummaryText(l)}</td></tr>
       <tr><td>น้ำหนักจริง</td><td>${(l.actualWeight||0).toFixed(2)} kg</td></tr>
       <tr><td>น้ำหนักชาร์จ</td><td>${chg(l).toFixed(2)} kg</td></tr>
       <tr><td>ตำแหน่งคลัง</td><td>${l.rack||'—'}</td></tr>
@@ -3002,7 +3176,7 @@ function coShowDetail(id){
   try{savedRows=Array.isArray(cs.cbmRows)?cs.cbmRows:(typeof cs.cbmRows==='string'?JSON.parse(cs.cbmRows||'[]'):[]);}catch(_){}
   cbm.consolId=id;
   cbm.transportType=cs.cbmTransportType||'sea_lcl';
-  cbm.rows=savedRows.map(r=>({type:r.type||'box',weight:r.weight||'',w:r.w||'',l:r.l||'',h:r.h||'',volWt:r.volWt||0,cbmVal:r.cbm||0}));
+  cbm.rows=savedRows.map(r=>({type:r.type||'box',weight:r.weight||'',w:r.w||'',l:r.l||'',h:r.h||'',volWt:r.volWt||0,cbmVal:r.cbm||0,items:Array.isArray(r.items)?r.items:[{desc:'',material:'',qty:'',unit:'PCS'}]}));
   cbmSetTransport(cbm.transportType, true);
   cbmRenderTable();
   cbmUpdateSummary();
@@ -3548,7 +3722,7 @@ function cbmOnInput(i, field, val){
   } else if(field!=='weight'){
     cbmCalcRow(i);
     const tbody=document.getElementById('cbm-tbody');
-    const row=tbody&&tbody.rows[i];
+    const row=tbody&&tbody.querySelector(`tr[data-row-idx="${i}"]`);
     if(row){
       row.cells[6].textContent=cbm.rows[i].volWt||'—';
       row.cells[7].textContent=cbm.rows[i].cbmVal||'—';
@@ -3559,8 +3733,28 @@ function cbmOnInput(i, field, val){
   }
 }
 
+function cbmAddItem(rowIdx){
+  if(!cbm.rows[rowIdx]) return;
+  if(!Array.isArray(cbm.rows[rowIdx].items)) cbm.rows[rowIdx].items=[];
+  cbm.rows[rowIdx].items.push({desc:'',material:'',qty:'',unit:'PCS'});
+  cbmRenderTable();
+}
+
+function cbmRemoveItem(rowIdx,itemIdx){
+  if(!cbm.rows[rowIdx]||!Array.isArray(cbm.rows[rowIdx].items)) return;
+  cbm.rows[rowIdx].items.splice(itemIdx,1);
+  if(!cbm.rows[rowIdx].items.length) cbm.rows[rowIdx].items=[{desc:'',material:'',qty:'',unit:'PCS'}];
+  cbmRenderTable();
+}
+
+function cbmOnItemInput(rowIdx,itemIdx,field,val){
+  if(!cbm.rows[rowIdx]||!Array.isArray(cbm.rows[rowIdx].items)) return;
+  if(!cbm.rows[rowIdx].items[itemIdx]) return;
+  cbm.rows[rowIdx].items[itemIdx][field]=val;
+}
+
 function cbmAddRow(type){
-  cbm.rows.push({type:type||'box',weight:'',w:'',l:'',h:'',volWt:0,cbmVal:0});
+  cbm.rows.push({type:type||'box',weight:'',w:'',l:'',h:'',volWt:0,cbmVal:0,items:[{desc:'',material:'',qty:'',unit:'PCS'}]});
   cbmRenderTable();
   cbmUpdateSummary();
   setTimeout(()=>{
@@ -3600,8 +3794,17 @@ function cbmRenderTable(){
   const CBM_TYPE_COLOR={box:'#1e40af',bag:'#7c3aed',sack:'#b45309',roll:'#065f46',pallet:'#9d174d',loose:'#374151'};
   if(tbody) tbody.innerHTML=cbm.rows.map((r,i)=>{
     const typeColor=CBM_TYPE_COLOR[r.type||'box']||'#374151';
+    const items=Array.isArray(r.items)&&r.items.length?r.items:[{desc:'',material:'',qty:'',unit:'PCS'}];
+    const itemsHtml=items.map((it,j)=>`
+      <tr>
+        <td style="padding:2px 3px"><input value="${(it.desc||'').replace(/"/g,'&quot;')}" oninput="cbmOnItemInput(${i},${j},'desc',this.value)" placeholder="ชื่อสินค้า เช่น LADY DRESS" style="width:100%;font-size:11px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:3px"></td>
+        <td style="padding:2px 3px"><input value="${(it.material||'').replace(/"/g,'&quot;')}" oninput="cbmOnItemInput(${i},${j},'material',this.value)" placeholder="วัสดุ เช่น 100%VISCOSE WOVEN" style="width:100%;font-size:11px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:3px"></td>
+        <td style="padding:2px 3px"><input type="number" min="0" value="${it.qty||''}" oninput="cbmOnItemInput(${i},${j},'qty',this.value)" placeholder="0" style="width:100%;font-size:11px;padding:3px 4px;border:1px solid #e5e7eb;border-radius:3px;text-align:center"></td>
+        <td style="padding:2px 3px"><input value="${(it.unit||'PCS').replace(/"/g,'&quot;')}" oninput="cbmOnItemInput(${i},${j},'unit',this.value)" placeholder="PCS" style="width:100%;font-size:11px;padding:3px 4px;border:1px solid #e5e7eb;border-radius:3px;text-align:center"></td>
+        <td style="padding:2px;text-align:center">${j>0?`<button onclick="cbmRemoveItem(${i},${j})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:15px;padding:1px 4px;line-height:1">×</button>`:'&nbsp;'}</td>
+      </tr>`).join('');
     return `
-    <tr style="border-bottom:1px solid var(--border)">
+    <tr data-row-idx="${i}" style="border-bottom:none">
       <td style="padding:6px;text-align:center;color:var(--text-2);font-weight:600">${i+1}</td>
       <td style="padding:4px;text-align:center">
         <select onchange="cbmOnInput(${i},'type',this.value)" style="font-size:11px;font-weight:700;padding:3px 4px;border-radius:4px;border:1.5px solid ${typeColor};color:${typeColor};background:#fff;cursor:pointer;max-width:72px">
@@ -3624,6 +3827,24 @@ function cbmRenderTable(){
       <td style="padding:6px;text-align:center;font-weight:600;color:var(--info-text);min-width:60px">${r.cbmVal||'—'}</td>
       <td style="padding:4px;text-align:center">
         <button onclick="cbmDeleteRow(${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;border-radius:4px" title="ลบ">×</button>
+      </td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="background:#f8fafc;border-right:2px solid var(--primary);padding:0"></td>
+      <td colspan="8" style="padding:6px 10px 8px;background:#f8fafc">
+        <div style="font-size:10px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">📋 รายการสินค้าในกล่องนี้</div>
+        <table style="width:100%;border-collapse:collapse">
+          <colgroup><col style="width:35%"><col style="width:35%"><col style="width:12%"><col style="width:10%"><col style="width:8%"></colgroup>
+          <tr style="font-size:10px;color:var(--text-2)">
+            <th style="text-align:left;padding:2px 6px;font-weight:600">ชื่อสินค้า</th>
+            <th style="text-align:left;padding:2px 6px;font-weight:600">วัสดุ / ชนิด</th>
+            <th style="text-align:center;padding:2px 6px;font-weight:600">จำนวน</th>
+            <th style="text-align:center;padding:2px 6px;font-weight:600">หน่วย</th>
+            <th></th>
+          </tr>
+          ${itemsHtml}
+        </table>
+        <button onclick="cbmAddItem(${i})" style="margin-top:5px;font-size:11px;padding:3px 10px;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600">+ เพิ่มรายการ</button>
       </td>
     </tr>`;
   }).join('');
@@ -3658,6 +3879,88 @@ function cbmUpdateSummary(){
   document.getElementById('cbm-sum-weight').innerHTML=`${totW.toFixed(2)} <span>kg</span>`;
   document.getElementById('cbm-sum-cbm').innerHTML=`${totCbm.toFixed(4)} <span>m³</span>`;
   document.getElementById('cbm-sum-chg').innerHTML=`${chargeable.toFixed(2)} <span>kg</span>`;
+
+  // Item count check (เช็คจำนวนสินค้า ชิ้น ไม่ใช่จำนวนแพ็ก)
+  const checkEl=document.getElementById('cbm-pkg-check');
+  if(checkEl&&cbm.consolId){
+    const coObj=LOCAL.consolidations.find(c=>c.id===cbm.consolId)||LOCAL.ships.find(s=>s.id===cbm.consolId);
+    if(coObj){
+      let lotIds=[];
+      try{lotIds=Array.isArray(coObj.lotIds)?coObj.lotIds:JSON.parse(coObj.lotIds||'[]');}catch(_){}
+      const lots=(LOCAL.lots||[]).filter(l=>lotIds.includes(l.id));
+
+      // คำนวณจำนวนสินค้ารวมจาก pkgData ของแต่ละ LOT
+      const PKG_TYPE_LBL={box:'กล่อง',bag:'ถุง',sack:'กระสอบ',roll:'ม้วน',pallet:'พาเลท',loose:'ชิ้น'};
+      const lotData=lots.map(l=>{
+        let pkgArr=[];
+        try{pkgArr=l.packages?JSON.parse(l.packages):[];}catch(_){}
+        const totalItems=pkgArr.reduce((s,p)=>s+(parseInt(p.itemCount)||0),0);
+        const pkgTypeSummary=(()=>{
+          if(pkgArr.length){
+            const mc={};pkgArr.forEach(p=>{const t=p.pkgType||'box';mc[t]=(mc[t]||0)+1;});
+            return Object.entries(mc).map(([t,n])=>n+' '+(PKG_TYPE_LBL[t]||t)).join(', ');
+          }
+          return (l.pkgCount||0)+' '+(PKG_TYPE_LBL[l.pkgType||'box']||'แพ็ก');
+        })();
+        return {id:l.id,shopName:l.shopName||'—',pkgCount:l.pkgCount||0,pkgTypeSummary,totalItems};
+      });
+
+      const expectedItems=lotData.reduce((s,d)=>s+d.totalItems,0);
+      const enteredItems=rows.reduce((s,r)=>s+(r.items||[]).reduce((ss,it)=>ss+(parseInt(it.qty)||0),0),0);
+      const hasItemData=expectedItems>0;
+
+      checkEl.style.display='';
+      const match=hasItemData&&(expectedItems===enteredItems);
+      const warn=hasItemData&&enteredItems>0&&!match;
+      const empty=enteredItems===0;
+
+      // ตาราง LOT breakdown
+      const lotRowsHtml=lotData.map(d=>`
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 10px;font-weight:600;font-size:12px">${d.shopName}</td>
+          <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:var(--text-2)">${d.id}</td>
+          <td style="padding:6px 10px;font-size:12px;text-align:center">${d.pkgTypeSummary}</td>
+          <td style="padding:6px 10px;font-size:13px;font-weight:700;text-align:center;color:var(--primary-text)">${d.totalItems>0?d.totalItems+' ชิ้น':'—'}</td>
+        </tr>`).join('');
+
+      checkEl.innerHTML=`
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--card-bg,#fff)">
+          <div style="padding:8px 12px;background:var(--bg,#f9fafb);border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em">
+            📋 ข้อมูลสินค้าที่รับเข้าคลัง
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="background:var(--bg,#f9fafb)">
+                <th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--text-2);font-size:11px;border-bottom:1px solid var(--border)">ร้านค้า</th>
+                <th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--text-2);font-size:11px;border-bottom:1px solid var(--border)">LOT</th>
+                <th style="padding:6px 10px;text-align:center;font-weight:600;color:var(--text-2);font-size:11px;border-bottom:1px solid var(--border)">แพ็กที่รับ</th>
+                <th style="padding:6px 10px;text-align:center;font-weight:600;color:var(--text-2);font-size:11px;border-bottom:1px solid var(--border)">จำนวนสินค้า</th>
+              </tr>
+            </thead>
+            <tbody>${lotRowsHtml}</tbody>
+          </table>
+          <div style="display:flex;align-items:center;gap:0;border-top:2px solid var(--border)">
+            <div style="flex:1;padding:10px 12px;border-right:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:2px">รับเข้าคลังรวม</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text-1)">${hasItemData?expectedItems+' ชิ้น':'— (ยังไม่ได้กรอก)'}</div>
+            </div>
+            <div style="flex:1;padding:10px 12px;border-right:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:2px">กรอกใน CBM แล้ว</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text-1)">${enteredItems>0?enteredItems+' ชิ้น':'—'}</div>
+            </div>
+            <div style="flex:1;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:${match?'#f0fdf4':warn?'#fffbeb':'var(--bg,#f9fafb)'}">
+              <div>
+                <div style="font-size:10px;color:var(--text-3);margin-bottom:2px">สถานะ</div>
+                <div style="font-size:13px;font-weight:700;color:${match?'#16a34a':warn?'#b45309':'var(--text-2)'}">
+                  ${match?'ตรงกัน':warn?`ขาด ${expectedItems-enteredItems} ชิ้น`:empty?'ยังไม่ได้กรอก':'—'}
+                </div>
+              </div>
+              <span style="font-size:18px">${match?'✅':warn?'⚠️':'📝'}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+  }
 }
 
 function cbmDoSave(){
@@ -3667,7 +3970,8 @@ function cbmDoSave(){
     type:r.type||'box',
     weight:parseFloat(r.weight)||0, w:parseFloat(r.w)||0,
     l:parseFloat(r.l)||0, h:parseFloat(r.h)||0,
-    volWt:r.volWt, cbm:r.cbmVal
+    volWt:r.volWt, cbm:r.cbmVal,
+    items:(r.items||[]).filter(it=>it.desc||it.qty)
   }));
   const totW=parseFloat(rows.reduce((s,r)=>s+r.weight,0).toFixed(2));
   const totCbm=parseFloat(rows.reduce((s,r)=>s+r.cbm,0).toFixed(4));
@@ -3840,6 +4144,13 @@ function cbmPrint(){
   cbm.rows.forEach(r=>{const t=r.type||'box';if(!byType[t]) byType[t]={count:0,weight:0,volWt:0,cbm:0};byType[t].count++;byType[t].weight+=parseFloat(r.weight)||0;byType[t].volWt+=r.volWt||0;byType[t].cbm+=r.cbmVal||0;});
   const multiType=Object.keys(byType).length>1;
   const rowsHtml=cbm.rows.map((r,i)=>'<tr><td style="text-align:center;font-weight:600;color:#6b7280">'+(i+1)+'</td><td style="text-align:center;font-weight:700">'+(TYPE_LABEL[r.type||'box']||r.type||'กล่อง')+'</td><td style="text-align:center">'+(r.weight||'—')+'</td><td style="text-align:center">'+(r.w||'—')+'</td><td style="text-align:center">'+(r.l||'—')+'</td><td style="text-align:center">'+(r.h||'—')+'</td><td style="text-align:center;font-weight:600;color:#059669">'+(r.volWt||'—')+'</td><td style="text-align:center;font-weight:600;color:#1d4ed8">'+(r.cbmVal||'—')+'</td></tr>').join('');
+  // Description of goods table rows
+  const hasItems=cbm.rows.some(r=>Array.isArray(r.items)&&r.items.some(it=>it.desc||it.qty));
+  const descRowsHtml=cbm.rows.map((r,i)=>{
+    const items=(Array.isArray(r.items)?r.items:[]).filter(it=>it.desc||it.qty);
+    if(!items.length) return '<tr><td style="text-align:center;font-weight:700;border:1px solid #ddd;padding:5px 8px">'+(i+1)+'</td><td style="border:1px solid #ddd;padding:5px 8px;color:#9ca3af" colspan="2">—</td><td style="border:1px solid #ddd;padding:5px 8px;text-align:center;color:#9ca3af">—</td></tr>';
+    return items.map((it,j)=>'<tr><td style="text-align:center;font-weight:700;border:1px solid #ddd;padding:5px 8px;vertical-align:middle">'+(j===0?i+1:'')+'</td><td style="border:1px solid #ddd;padding:5px 8px;font-weight:600">'+(it.desc||'')+'</td><td style="border:1px solid #ddd;padding:5px 8px;color:#374151">'+(it.material||'')+'</td><td style="border:1px solid #ddd;padding:5px 8px;text-align:center;font-weight:700">'+(it.qty?it.qty+' '+(it.unit||'PCS'):'—')+'</td></tr>').join('');
+  }).join('');
   const subtotalHtml=multiType?Object.entries(byType).map(([t,d])=>'<tr style="background:#ecfdf5"><td colspan="2" style="text-align:right;font-weight:700;color:#065f46;font-size:11px;padding:5px 8px">รวม'+(TYPE_LABEL[t]||t)+' ('+d.count+')</td><td style="text-align:center;font-weight:700">'+d.weight.toFixed(2)+'</td><td colspan="3"></td><td style="text-align:center;font-weight:700;color:#059669">'+d.volWt.toFixed(2)+'</td><td style="text-align:center;font-weight:700;color:#1d4ed8">'+d.cbm.toFixed(4)+'</td></tr>').join(''):'';
   const typeCountBoxes=Object.entries(byType).map(([t,d])=>'<div class="sum-box"><div class="val">'+d.count+'</div><div class="lbl">'+(TYPE_LABEL[t]||t)+'</div></div>').join('');
   const w=window.open('','_blank','width=860,height=900');
@@ -3879,6 +4190,10 @@ function cbmPrint(){
     +'<tbody>'+rowsHtml+subtotalHtml+'<tr class="total-row"><td colspan="2">รวมทั้งหมด ('+cbm.rows.length+')</td><td>'+totW.toFixed(2)+'</td><td colspan="3"></td><td style="color:#059669">'+totVol.toFixed(2)+'</td><td style="color:#1d4ed8">'+totCbm.toFixed(4)+'</td></tr></tbody>'
     +'</table>'
     +'<p class="formula">CBM = W \xd7 L \xd7 H \xf7 1,000,000 | Vol.WT = W \xd7 L \xd7 H \xf7 '+div.toLocaleString()+'</p>'
+    +(hasItems?'<h3 style="font-size:14px;font-weight:800;color:#1f2937;margin:24px 0 8px;border-top:2px solid #e5e7eb;padding-top:16px">Description of Goods</h3>'
+      +'<table style="width:100%;border-collapse:collapse;margin-bottom:16px">'
+      +'<thead><tr style="background:#1f2937;color:#fff"><th style="padding:8px 10px;text-align:center;font-size:11px;border:1px solid #374151;width:60px">CTN<br>NO:</th><th style="padding:8px 10px;text-align:left;font-size:11px;border:1px solid #374151">Description of goods</th><th style="padding:8px 10px;text-align:left;font-size:11px;border:1px solid #374151"></th><th style="padding:8px 10px;text-align:center;font-size:11px;border:1px solid #374151;width:80px">Quantity</th></tr></thead>'
+      +'<tbody>'+descRowsHtml+'</tbody></table>':'')
     +'<div class="sum-grid">'+typeCountBoxes
     +'<div class="sum-box"><div class="val">'+totW.toFixed(2)+' kg</div><div class="lbl">น้ำหนักรวม</div></div>'
     +'<div class="sum-box"><div class="val">'+totCbm.toFixed(4)+' m\xb3</div><div class="lbl">CBM รวม</div></div>'
@@ -5784,6 +6099,8 @@ function custShowDetail(id){
   const aliasArr=Array.isArray(c.aliases)?c.aliases:(c.aliases?String(c.aliases).split(',').map(s=>s.trim()).filter(Boolean):[]);
   if(aliasArr.length) lines.push(`<div style="font-size:11px;color:var(--text-2);margin-top:4px">🏷 ชื่อเล่น: ${aliasArr.map(a=>`<span style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1px 7px;font-size:11px">${a}</span>`).join(' ')}</div>`);
   if(c.passportNumber) lines.push(`<div style="font-size:11px;color:var(--text-2);margin-top:6px">🪪 Passport: ${c.passportNumber}</div>`);
+  if(c.eoriNumber) lines.push(`<div style="font-size:11px;color:var(--text-2)">🔖 EORI: ${c.eoriNumber}</div>`);
+  if(c.taxNumber)  lines.push(`<div style="font-size:11px;color:var(--text-2)">🧾 Tax / VAT: ${c.taxNumber}</div>`);
   if(c.responsibleSale) lines.push(`<div style="font-size:11px;color:var(--text-2)">👤 Sale: ${c.responsibleSale}</div>`);
   document.getElementById('cd-contact').innerHTML = `<div class="cust-detail-section-title">ข้อมูลติดต่อ</div>${lines.join('')}`;
   // lots
@@ -5828,6 +6145,8 @@ function custShowForm(id=null){
     document.getElementById('cf-address').value      = c.address||'';
     document.getElementById('cf-passport').value     = c.passportNumber||'';
     document.getElementById('cf-passport-img').value = c.passportImageUrl||'';
+    document.getElementById('cf-eori').value         = c.eoriNumber||'';
+    document.getElementById('cf-tax').value          = c.taxNumber||'';
     document.getElementById('cf-email').value        = c.email||'';
     document.getElementById('cf-cc').value           = c.countryCode||'';
     document.getElementById('cf-phone').value        = c.phone||'';
@@ -5843,7 +6162,7 @@ function custShowForm(id=null){
     }
   } else {
     ['cf-name','cf-company','cf-aliases','cf-country','cf-address',
-     'cf-passport','cf-passport-img','cf-email','cf-cc','cf-phone','cf-im-account','cf-responsible-sale','cf-note']
+     'cf-passport','cf-passport-img','cf-eori','cf-tax','cf-email','cf-cc','cf-phone','cf-im-account','cf-responsible-sale','cf-note']
       .forEach(i=>document.getElementById(i).value='');
     document.getElementById('cf-im-type').value='';
   }
@@ -5885,6 +6204,8 @@ async function custSave(){
     companyName:      document.getElementById('cf-company').value.trim(),
     passportNumber:   document.getElementById('cf-passport').value.trim(),
     passportImageUrl,
+    eoriNumber:       document.getElementById('cf-eori').value.trim(),
+    taxNumber:        document.getElementById('cf-tax').value.trim(),
     email:            document.getElementById('cf-email').value.trim(),
     countryCode:      document.getElementById('cf-cc').value.trim(),
     phone:            document.getElementById('cf-phone').value.trim(),
